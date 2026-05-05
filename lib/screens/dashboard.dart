@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class Dashboard extends StatelessWidget {
+  const Dashboard({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,6 +35,8 @@ class Dashboard extends StatelessWidget {
 
 // header
 class HeaderSection extends StatelessWidget {
+  const HeaderSection({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -61,6 +65,8 @@ class HeaderSection extends StatelessWidget {
 
 // main bill card
 class BillCard extends StatelessWidget {
+  const BillCard({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -124,6 +130,8 @@ class BillCard extends StatelessWidget {
 
 // stats row
 class StatsRow extends StatelessWidget {
+  const StatsRow({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -151,6 +159,7 @@ class StatCard extends StatelessWidget {
   final String subtitle;
 
   const StatCard({
+    super.key,
     required this.title,
     required this.value,
     required this.subtitle,
