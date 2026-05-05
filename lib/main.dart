@@ -1,7 +1,10 @@
-// app entry point
-import 'package:flutter/material.dart';
-import 'app.dart';
+import "package:flutter/material.dart";
+import "package:wattwais/wattwais.dart";
 
-void main() {
-  runApp(MyApp());
-}
+/*
+App entry point for the WattwAIs app
+WattwAIs - an electricity consumption monitoring and prediction app 
+built using Flutter, Dart, Firebase as DB and XGBoost model for ML prediction
+ */
+
+void main () => runApp(WattwAIsApp());
