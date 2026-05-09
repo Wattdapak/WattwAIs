@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dashboard.dart';
+import 'package:wattwais/screens/main_screen.dart';
 import '../services/app_initializer.dart';
 
 class LoadingScreen extends StatefulWidget {
@@ -20,7 +20,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => Dashboard()),
+      MaterialPageRoute(builder: (_) => MainScreen()),
     );
   }
 
