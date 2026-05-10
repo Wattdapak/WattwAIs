@@ -1,7 +1,6 @@
 //route constants
 
 class Routes {
-
   static const dashboard = '/dashboard';
   static const splashscreen = '/splashscreen';
   // static const billhistory = '/bill-history';
@@ -10,5 +9,4 @@ class Routes {
   // static const prediction = '/prediction';
   // static const settings = '/settings';
   // static const loading = '/loading';
-
 }

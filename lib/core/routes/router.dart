@@ -16,8 +16,8 @@ class WattwaisRouter {
 
       GoRoute(
         path: Routes.dashboard,
-        builder: (context, state) => Dashboard(),
-      )
+        builder: (context, state) => const Dashboard(),
+      ),
     ],
-  );  
+  );
 }
