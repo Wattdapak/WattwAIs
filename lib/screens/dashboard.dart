@@ -22,19 +22,26 @@ class _DashboardState extends State<Dashboard> {
   var _showSetup = false;
   var _predicting = false;
   var _appliances = defaultAppliances;
+  var _bill = 0.0;
+  var _usage = 0.0;
+  var _budgetUsage = 500.0;
 
   void _openSetup() {
     setState(() => _showSetup = true);
   }
 
-  Future<void> _predictBill() async {
+  Future<void> _predictBill({required double bill, required double rate}) async {
     setState(() => _predicting = true);
+    
     await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     setState(() {
       _predicting = false;
       _showSetup = false;
       _tab = 0;
+      // TODO: replace with actuall values
+      _bill = bill;
+      _usage = bill / rate;
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -77,7 +84,8 @@ class _DashboardState extends State<Dashboard> {
         onAdd: _addAppliance,
         onChange: _updateAppliance,
         onDelete: _removeAppliance,
-        onPredict: _predictBill,
+        onPredict: ({required double bill, required double rate}) => 
+          _predictBill(bill: bill, rate: rate),
       );
     }
 
@@ -88,7 +96,12 @@ class _DashboardState extends State<Dashboard> {
           key: ValueKey(_tab),
           index: _tab,
           children: [
-            HomeScreen(onPredict: _openSetup),
+            HomeScreen(
+              onPredict: _openSetup,
+              bill: _bill,
+              usage: _usage,
+              budgetUsage: _budgetUsage,
+            ),
             const StatsScreen(),
             TipsScreen(),
             ProfileScreen(),

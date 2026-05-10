@@ -8,7 +8,7 @@ import 'package:wattwais/widgets/app_chrome.dart';
 //import '../widgets/bottom_nav.dart';
 import '../widgets/screenscaffold.dart';
 
-class SetupScreen extends StatelessWidget {
+class SetupScreen extends StatefulWidget {
   const SetupScreen({
     super.key,
     required this.appliances,
@@ -26,7 +26,28 @@ class SetupScreen extends StatelessWidget {
   final ValueChanged<Appliance> onAdd;
   final void Function(int index, Appliance appliance) onChange;
   final ValueChanged<int> onDelete;
-  final VoidCallback onPredict;
+  final void Function({required double bill, required double rate}) onPredict;
+
+  @override
+  State<SetupScreen> createState() => _SetupScreenState();
+}
+
+class _SetupScreenState extends State<SetupScreen> {
+  late final _billController = TextEditingController();
+  late final _rateController = TextEditingController();
+
+  @override
+  void dispose() {
+    _billController.dispose();
+    _rateController.dispose();
+    super.dispose();
+  }
+
+  void _handlePredict() {
+    final bill = double.tryParse(_billController.text.replaceAll(',', '')) ?? 0;
+    final rate = double.tryParse(_rateController.text.replaceAll(',', '')) ?? 0;
+    widget.onPredict(bill: bill, rate: rate);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +63,7 @@ class SetupScreen extends StatelessWidget {
                 Row(
                   children: [
                     IconButton.filled(
-                      onPressed: onBack,
+                      onPressed: widget.onBack,
                       style: IconButton.styleFrom(
                         backgroundColor: const Color(0xFF161D25),
                         fixedSize: const Size(54, 54),
@@ -70,7 +91,10 @@ class SetupScreen extends StatelessWidget {
                   style: TextStyle(color: AppColors.muted, fontSize: 14),
                 ),
                 const SizedBox(height: 24),
-                const _SetupInputs(),
+                _SetupInputs(
+                  billController: _billController,
+                  rateController: _rateController,
+                ),
                 const SizedBox(height: 22),
                 Text('ADD APPLIANCE', style: context.sectionLabel),
                 const SizedBox(height: 14),
@@ -86,30 +110,30 @@ class SetupScreen extends StatelessWidget {
                       final item = defaultAppliances[index];
                       return ApplianceChip(
                         appliance: item,
-                        selected: appliances.any(
+                        selected: widget.appliances.any(
                           (entry) => entry.name == item.name,
                         ),
-                        onTap: () => onAdd(item),
+                        onTap: () => widget.onAdd(item),
                       );
                     },
                   ),
                 ),
                 const SizedBox(height: 22),
                 Text(
-                  'INVENTORY · ${appliances.length}',
+                  'INVENTORY · ${widget.appliances.length}',
                   style: context.sectionLabel,
                 ),
                 const SizedBox(height: 16),
-                if (appliances.isEmpty)
+                if (widget.appliances.isEmpty)
                   const EmptyInventoryCard()
                 else
-                  ...appliances.indexed.map(
+                  ...widget.appliances.indexed.map(
                     (entry) => Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: ApplianceInventoryCard(
                         appliance: entry.$2,
-                        onChanged: (value) => onChange(entry.$1, value),
-                        onDelete: () => onDelete(entry.$1),
+                        onChanged: (value) => widget.onChange(entry.$1, value),
+                        onDelete: () => widget.onDelete(entry.$1),
                       ),
                     ),
                   ),
@@ -123,12 +147,12 @@ class SetupScreen extends StatelessWidget {
             bottom: 34,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
-              child: isPredicting
+              child: widget.isPredicting
                   ? const _PredictingBar()
                   : PrimaryPillButton(
                       label: 'Predict my bill',
                       icon: Icons.auto_fix_high_rounded,
-                      onPressed: onPredict,
+                      onPressed: _handlePredict,
                     ),
             ),
           ),
@@ -139,51 +163,92 @@ class SetupScreen extends StatelessWidget {
 }
 
 class _SetupInputs extends StatelessWidget {
-  const _SetupInputs();
+  const _SetupInputs({
+    required this.billController,
+    required this.rateController,
+  });
+
+  final TextEditingController billController;
+  final TextEditingController rateController;
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
         Expanded(
-          child: _MockInput(label: 'LAST BILL (₱)', value: '₱ 2400'),
+          child: _FormInput(
+            label: 'LAST BILL (₱)',
+            hint: '2400',
+            prefix: '₱ ',
+            controller: billController,
+          ),
         ),
-        SizedBox(width: 18),
+        const SizedBox(width: 18),
         Expanded(
-          child: _MockInput(label: 'RATE / KWH', value: '₱ 8'),
+          child: _FormInput(
+            label: 'RATE / KWH',
+            hint: '8.00',
+            prefix: '₱ ',
+            controller: rateController,
+          ),
         ),
       ],
     );
   }
 }
 
-class _MockInput extends StatelessWidget {
-  const _MockInput({required this.label, required this.value});
+class _FormInput extends StatelessWidget {
+  const _FormInput({
+    required this.label,
+    required this.hint,
+    required this.controller,
+    this.prefix,
+  });
 
   final String label;
-  final String value;
+  final String hint;
+  final TextEditingController controller;
+  final String? prefix;
 
   @override
   Widget build(BuildContext context) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+      borderSide: const BorderSide(color: AppColors.mutedBorder, width: 1.3),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: context.sectionLabel.copyWith(fontSize: 13)),
         const SizedBox(height: 14),
-        Container(
-          height: 58,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          alignment: Alignment.centerLeft,
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F151B),
-            borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
-            border: Border.all(color: AppColors.mutedBorder, width: 1.3),
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+        TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(
+              color: AppColors.dim,
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+            ),
+            prefixText: prefix,
+            prefixStyle: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 18,
+            ),
+            filled: true,
+            fillColor: const Color(0xFF0F151B),
+            border: border,
+            enabledBorder: border,
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+              borderSide: const BorderSide(color: AppColors.blue, width: 1.5),
             ),
           ),
         ),
