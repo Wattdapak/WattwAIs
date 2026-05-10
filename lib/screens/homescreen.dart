@@ -7,9 +7,18 @@ import 'package:wattwais/widgets/app_chrome.dart';
 import '../widgets/screenscaffold.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.onPredict});
+  const HomeScreen({
+    super.key, 
+    required this.onPredict,
+    required this.bill,
+    required this.usage,
+    required this.budgetUsage,
+  });
 
   final VoidCallback onPredict;
+  final double bill;
+  final double usage;
+  final double budgetUsage;
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +29,11 @@ class HomeScreen extends StatelessWidget {
         children: [
           const _HomeHeader(),
           const SizedBox(height: 22),
-          const BillHeroCard(),
+          BillHeroCard(
+            bill: bill, 
+            usage: usage, 
+            budgetusage: budgetUsage
+          ),
           const SizedBox(height: 16),
           const Row(
             children: [
@@ -144,10 +157,22 @@ class _HomeHeader extends StatelessWidget {
 }
 
 class BillHeroCard extends StatelessWidget {
-  const BillHeroCard({super.key});
+  BillHeroCard({
+    super.key,
+    required this.bill,
+    required this.usage,
+    required this.budgetusage,
+    });
+
+    final double bill;
+    final double usage;
+    final double budgetusage;
 
   @override
   Widget build(BuildContext context) {
+    final billWhole = bill.toStringAsFixed(2).split('.')[0];
+    final billDecimal = bill.toStringAsFixed(2).split('.')[1];
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
@@ -158,7 +183,7 @@ class BillHeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Your bill for this month',
             style: TextStyle(
               color: Color(0xFF073A68),
@@ -171,7 +196,7 @@ class BillHeroCard extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: RichText(
-              text: const TextSpan(
+              text: TextSpan(
                 style: TextStyle(
                   color: AppColors.midnight,
                   fontSize: 56,
@@ -181,9 +206,9 @@ class BillHeroCard extends StatelessWidget {
                   letterSpacing: 0,
                 ),
                 children: [
-                  TextSpan(text: '₱2,184'),
+                  TextSpan(text: '₱$billWhole'),
                   TextSpan(
-                    text: '.30',
+                    text: ".$billDecimal",
                     style: TextStyle(color: AppColors.blueDark),
                   ),
                 ],
@@ -191,8 +216,8 @@ class BillHeroCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            '273 kWh',
+          Text(
+            '${usage.toStringAsFixed(0)} kWh',
             style: TextStyle(
               color: Color(0xFF083D6D),
               fontSize: 13,
@@ -205,20 +230,17 @@ class BillHeroCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               minHeight: 10,
-              value: 273 / 500,
+              value: usage / budgetusage,
               color: AppColors.midnight,
               backgroundColor: AppColors.blueDark,
             ),
           ),
           const SizedBox(height: 14),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('0 kWh', style: TextStyle(color: Color(0xFF11517D), fontFamily: 'Helvetica Neue')),
-              Text(
-                'Budget: 500 kWh',
-                style: TextStyle(color: Color(0xFF11517D), fontFamily: 'Helvetica Neue'),
-              ),
+              Text('Budget: ${budgetusage.toStringAsFixed(0)} kWh'),
             ],
           ),
         ],

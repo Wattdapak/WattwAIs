@@ -30,7 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               borderRadius: BorderRadius.circular(28),
             ),
             child: const Text(
-              'A',
+              'J',
               style: TextStyle(
                 color: AppColors.ink,
                 fontSize: 28,
@@ -40,12 +40,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 22),
           const Text(
-            'Aarav Mendoza',
+            'Julo Bretaña',
             style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
           const Text(
-            'Quezon City · Meralco',
+            'Iloilo City · Ileco',
             style: TextStyle(color: AppColors.muted, fontSize: 14),
           ),
           const SizedBox(height: 26),

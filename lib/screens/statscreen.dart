@@ -23,7 +23,7 @@ class StatsScreen extends StatelessWidget {
           const SizedBox(height: 8),
           const Text(
             'Last 7 months',
-            style: TextStyle(color: AppColors.muted, fontSize: 14),
+            style: TextStyle(color: AppColors.muted, fontSize: 14, fontFamily: 'Helvetica Neue'),
           ),
           const SizedBox(height: 24),
           const _AverageCard(),
@@ -37,7 +37,7 @@ class StatsScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Monthly kWh',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'Helvetica Neue'),
                   ),
                   Expanded(child: MonthlyChart()),
                 ],
@@ -57,7 +57,7 @@ class StatsScreen extends StatelessWidget {
               SizedBox(width: 18),
               Expanded(
                 child: _SmallStat(
-                  title: 'VS NEIGHBORS',
+                  title: 'VS PREV MONTH',
                   value: '-12%',
                   label: 'More efficient',
                   accent: true,
@@ -79,13 +79,14 @@ class StatsScreen extends StatelessWidget {
                         'Next billing',
                         style: TextStyle(
                           fontSize: 18,
+                          fontFamily: 'Helvetica Neue',
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       SizedBox(height: 6),
                       Text(
                         'Estimated ₱2,184 · Aug 24',
-                        style: TextStyle(color: AppColors.muted, fontSize: 14),
+                        style: TextStyle(color: AppColors.muted, fontSize: 14, fontFamily: 'Helvetica Neue'),
                       ),
                     ],
                   ),
@@ -119,7 +120,8 @@ class _AverageCard extends StatelessWidget {
             style: TextStyle(
               color: AppColors.ink,
               fontSize: 13,
-              letterSpacing: 2.4,
+              letterSpacing: 0,
+              fontFamily: 'Helvetica Neue',
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -128,14 +130,15 @@ class _AverageCard extends StatelessWidget {
             '₱2,340',
             style: TextStyle(
               color: AppColors.ink,
-              fontSize: 28,
+              fontSize: 36,
               fontWeight: FontWeight.w900,
+              fontFamily: 'Helvetica Neue',
             ),
           ),
           SizedBox(height: 20),
           Text(
             '⌄ 6.2% lower vs last quarter',
-            style: TextStyle(color: AppColors.ink, fontSize: 15),
+            style: TextStyle(color: AppColors.ink, fontSize: 15, fontFamily: 'Helvetica Neue'),
           ),
         ],
       ),
@@ -259,7 +262,7 @@ class _SmallStat extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: context.sectionLabel.copyWith(fontSize: 13)),
+          Text(title, style: context.sectionLabel.copyWith(fontSize: 13, letterSpacing: 0)),
           const SizedBox(height: 24),
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -268,6 +271,7 @@ class _SmallStat extends StatelessWidget {
               style: TextStyle(
                 color: accent ? AppColors.cyan : AppColors.text,
                 fontSize: 23,
+                fontFamily: 'Helvetica Neue',
                 fontWeight: FontWeight.w900,
               ),
             ),
