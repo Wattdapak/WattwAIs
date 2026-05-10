@@ -9,12 +9,10 @@ WattwAIs - an electricity consumption monitoring and prediction app
 built using Flutter, Dart, Firebase as DB and XGBoost model for ML prediction
  */
 
-void main () async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  await Firebase.initializeApp(
-  options: DefaultFirebaseOptions.currentPlatform,
-);
 
-  runApp(WattwAIsApp());
-} 
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  runApp(const WattwAIsApp());
+}
