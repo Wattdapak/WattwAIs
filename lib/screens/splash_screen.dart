@@ -36,8 +36,8 @@ class _LogoScreenState extends State<LogoScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 128,
-              height: 128,
+              width: 100,
+              height: 100,
               decoration: BoxDecoration(
                 color: AppColors.blue,
                 borderRadius: BorderRadius.circular(32),
@@ -61,8 +61,9 @@ class _LogoScreenState extends State<LogoScreen> {
                 style: TextStyle(
                   color: AppColors.text,
                   fontSize: 46,
+                  fontFamily: 'Poppins',
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
+                  letterSpacing: -5,
                 ),
                 children: [
                   TextSpan(text: 'Wattw'),
@@ -76,12 +77,12 @@ class _LogoScreenState extends State<LogoScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'PREDICT · SAVE · POWER',
+              'Start managing your electricity, wisely.',
               style: TextStyle(
                 color: AppColors.muted,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 4,
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 0,
               ),
             ),
           ],
