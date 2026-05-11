@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from xgboost import XGBRegressor
 import pandas as pd
 import os
+import pickle
 
 app = FastAPI(title="WattwAIs XGBoost Inference API")
 
@@ -35,15 +36,27 @@ FEATURE_COLUMNS = [
 
 # Load model with error handling
 model = None
-model_path = "wattwais_xgboost_daily_model.json"
+# Construct path relative to this script's location
+script_dir = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(script_dir, "wattwais_xgboost_daily_model.json")
 
 if os.path.exists(model_path):
     try:
-        model = XGBRegressor()
-        model.load_model(model_path)
-    except Exception as e:
-        print(f"Warning: Failed to load model from {model_path}: {str(e)}")
-        model = None
+        # Try loading as pickle first
+        with open(model_path, 'rb') as f:
+            model = pickle.load(f)
+        print(f"Model loaded successfully (pickle format) from {model_path}")
+    except Exception as pickle_error:
+        try:
+            # Try loading as XGBoost model format
+            model = XGBRegressor()
+            model.load_model(model_path)
+            print(f"Model loaded successfully (XGBoost format) from {model_path}")
+        except Exception as xgb_error:
+            print(f"Warning: Failed to load model in both formats")
+            print(f"  Pickle error: {str(pickle_error)}")
+            print(f"  XGBoost error: {str(xgb_error)}")
+            model = None
 else:
     print(f"Warning: Model file not found at {model_path}")
     print("Please place the trained XGBoost model file in the wattwais-backend/ directory")
