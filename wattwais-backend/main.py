@@ -1,134 +1,150 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI
 from pydantic import BaseModel
-from xgboost import XGBRegressor
+from typing import List, Optional
 import pandas as pd
-import os
-import pickle
+import numpy as np
+import joblib
+from datetime import datetime
 
-app = FastAPI(title="WattwAIs XGBoost Inference API")
+app = FastAPI(title="wattwais prediction api")
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost",
-        "http://127.0.0.1",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+MODEL_PATH = "models/wattwais_iflex_xgboost.pkl"
+model = joblib.load(MODEL_PATH)
 
-FEATURE_COLUMNS = [
-    "lag_1",
-    "lag_2",
-    "lag_3",
-    "lag_7",
-    "rolling_mean_3",
-    "rolling_mean_7",
-    "day_of_week",
-    "month",
-    "trend",
-]
 
-# Load model with error handling
-model = None
-# Construct path relative to this script's location
-script_dir = os.path.dirname(os.path.abspath(__file__))
-model_path = os.path.join(script_dir, "wattwais_xgboost_daily_model.json")
-
-if os.path.exists(model_path):
-    try:
-        # Try loading as pickle first
-        with open(model_path, 'rb') as f:
-            model = pickle.load(f)
-        print(f"Model loaded successfully (pickle format) from {model_path}")
-    except Exception as pickle_error:
-        try:
-            # Try loading as XGBoost model format
-            model = XGBRegressor()
-            model.load_model(model_path)
-            print(f"Model loaded successfully (XGBoost format) from {model_path}")
-        except Exception as xgb_error:
-            print(f"Warning: Failed to load model in both formats")
-            print(f"  Pickle error: {str(pickle_error)}")
-            print(f"  XGBoost error: {str(xgb_error)}")
-            model = None
-else:
-    print(f"Warning: Model file not found at {model_path}")
-    print("Please place the trained XGBoost model file in the wattwais-backend/ directory")
+class ApplianceInput(BaseModel):
+    name: str
+    quantity: int
+    watts: float
+    hours_per_day: float
+    days_per_week: int
 
 
 class PredictionRequest(BaseModel):
-    lag_1: float
-    lag_2: float
-    lag_3: float
-    lag_7: float
-    rolling_mean_3: float
-    rolling_mean_7: float
-    day_of_week: int
-    month: int
-    trend: int
-    rate_per_kwh: float
-    budget: float
+    appliances: List[ApplianceInput]
+    base_rate: float
+    six_month_total_bill: float
+    six_month_total_kwh: float
+    monthly_budget: Optional[float] = None
 
 
 @app.get("/")
 def health_check():
-    return {"status": "ok", "message": "wattwais inference api running"}
+    return {"status": "ok", "message": "wattwais backend running"}
+
+
+def compute_appliance_monthly_kwh(appliances: List[ApplianceInput]):
+    appliance_breakdown = []
+    total_monthly_kwh = 0
+
+    for item in appliances:
+        daily_kwh = (item.watts * item.quantity * item.hours_per_day) / 1000
+        weekly_kwh = daily_kwh * item.days_per_week
+        monthly_kwh = weekly_kwh * 4.345
+
+        total_monthly_kwh += monthly_kwh
+
+        appliance_breakdown.append({
+            "name": item.name,
+            "quantity": item.quantity,
+            "watts": item.watts,
+            "hours_per_day": item.hours_per_day,
+            "days_per_week": item.days_per_week,
+            "monthly_kwh": round(monthly_kwh, 2)
+        })
+
+    return total_monthly_kwh, appliance_breakdown
+
+
+def build_model_features(avg_hourly_kwh: float):
+    now = datetime.now()
+
+    hour = now.hour
+    day_of_week = now.weekday()
+    month = now.month
+    day = now.day
+    is_weekend = 1 if day_of_week in [5, 6] else 0
+
+    features = pd.DataFrame([{
+        "hour": hour,
+        "day_of_week": day_of_week,
+        "month": month,
+        "day": day,
+        "is_weekend": is_weekend,
+
+        "Experiment_price_NOK_kWh": 1.0,
+        "Temperature": 28.0,
+        "Temperature24": 28.0,
+        "Temperature48": 28.0,
+        "Temperature72": 28.0,
+
+        "lag_1": avg_hourly_kwh,
+        "lag_24": avg_hourly_kwh,
+        "lag_168": avg_hourly_kwh,
+        "rolling_24": avg_hourly_kwh,
+        "rolling_168": avg_hourly_kwh,
+
+        "Region": "Oslo",
+        "Municipality": "Oslo",
+        "Participation_Phase": "Phase_2",
+        "Control_Price_Phase2": "Price group",
+        "Group_Phase2": "H1"
+    }])
+
+    return features
 
 
 @app.post("/predict")
-def predict_bill(data: PredictionRequest):
-    if model is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Model is not loaded. Please ensure wattwais_xgboost_daily_model.json is placed in the wattwais-backend/ directory."
-        )
-    
-    try:
-        input_df = pd.DataFrame([{
-            "lag_1": data.lag_1,
-            "lag_2": data.lag_2,
-            "lag_3": data.lag_3,
-            "lag_7": data.lag_7,
-            "rolling_mean_3": data.rolling_mean_3,
-            "rolling_mean_7": data.rolling_mean_7,
-            "day_of_week": data.day_of_week,
-            "month": data.month,
-            "trend": data.trend,
-        }], columns=FEATURE_COLUMNS)
+def predict_bill(request: PredictionRequest):
+    appliance_monthly_kwh, appliance_breakdown = compute_appliance_monthly_kwh(request.appliances)
 
-        predicted_daily_kwh = float(model.predict(input_df)[0])
-        predicted_daily_kwh = max(predicted_daily_kwh, 0)
+    historical_monthly_kwh = request.six_month_total_kwh / 6
+    historical_monthly_bill = request.six_month_total_bill / 6
 
-        estimated_monthly_kwh = predicted_daily_kwh * 30
-        estimated_bill = estimated_monthly_kwh * data.rate_per_kwh
-        exceeds_budget = estimated_bill > data.budget
+    historical_rate = (
+        request.six_month_total_bill / request.six_month_total_kwh
+        if request.six_month_total_kwh > 0
+        else request.base_rate
+    )
 
-        budget_gap = estimated_bill - data.budget
+    effective_rate = request.base_rate if request.base_rate > 0 else historical_rate
 
-        if exceeds_budget:
-            recommendation = (
-                f"your predicted bill may exceed your budget by approximately ₱{budget_gap:.2f}. "
-                "consider reducing usage of high-consumption appliances such as air conditioners, heaters, or dryers."
-            )
-        else:
-            recommendation = (
-                "your predicted bill is within budget. continue monitoring high-consumption appliances to maintain usage."
-            )
+    blended_monthly_kwh = (
+        0.6 * historical_monthly_kwh +
+        0.4 * appliance_monthly_kwh
+    )
 
-        return {
-            "predicted_daily_kwh": round(predicted_daily_kwh, 2),
-            "estimated_monthly_kwh": round(estimated_monthly_kwh, 2),
-            "estimated_bill": round(estimated_bill, 2),
-            "budget": round(data.budget, 2),
-            "exceeds_budget": exceeds_budget,
-            "recommendation": recommendation,
-        }
+    avg_hourly_kwh = blended_monthly_kwh / 30 / 24
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    features = build_model_features(avg_hourly_kwh)
+
+    predicted_hourly_kwh = float(model.predict(features)[0])
+    model_monthly_kwh = predicted_hourly_kwh * 24 * 30
+
+    estimated_monthly_kwh = (
+        0.5 * historical_monthly_kwh +
+        0.3 * appliance_monthly_kwh +
+        0.2 * model_monthly_kwh
+    )
+
+    estimated_bill = estimated_monthly_kwh * effective_rate
+
+    exceeds_budget = (
+        estimated_bill > request.monthly_budget
+        if request.monthly_budget is not None
+        else None
+    )
+
+    return {
+        "predicted_hourly_kwh": round(predicted_hourly_kwh, 3),
+        "model_monthly_kwh": round(model_monthly_kwh, 2),
+        "appliance_monthly_kwh": round(appliance_monthly_kwh, 2),
+        "historical_monthly_kwh": round(historical_monthly_kwh, 2),
+        "estimated_monthly_kwh": round(estimated_monthly_kwh, 2),
+        "estimated_bill": round(estimated_bill, 2),
+        "effective_rate": round(effective_rate, 2),
+        "historical_monthly_bill": round(historical_monthly_bill, 2),
+        "exceeds_budget": exceeds_budget,
+        "appliance_breakdown": appliance_breakdown,
+        "recommendation": "ai recommendation endpoint can use this prediction result plus appliance breakdown."
+    }
