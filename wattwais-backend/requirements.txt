@@ -1,7 +1,12 @@
 fastapi
 uvicorn
-xgboost
+pydantic
 pandas
 numpy
-pydantic
-python-multipart
+joblib
+scikit-learn
+xgboost
+lightgbm
+catboost
+openai
+python-dotenv
