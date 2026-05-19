@@ -123,4 +123,43 @@ class BillService {
         .doc("budget")
         .set({"amount": amount});
   }
+  
+  //load base rate from Firestore.
+  static Future<String?> loadBaseRate() async {
+    final user = _auth.currentUser;
+
+    if (user == null) return null;
+
+    //fetch base rate
+    final doc = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('settings')
+        .doc('base_rate')
+        .get();
+
+    if (!doc.exists) {
+      return null;
+    }
+
+    return doc['amount'].toString();
+  }
+
+  //save base rate to Firestore.
+  static Future<void> saveBaseRate(double amount) async {
+    final user = _auth.currentUser;
+
+    if (user == null) return;
+
+    //save base rate value to Firestore under the user's settings
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('settings')
+        .doc('base_rate')
+        .set({
+      'amount': amount,
+    });
+  }
+
 }

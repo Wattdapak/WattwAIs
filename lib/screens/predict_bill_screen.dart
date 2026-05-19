@@ -19,6 +19,7 @@ class PredictBillScreen extends StatefulWidget {
 class _PredictBillScreenState extends State<PredictBillScreen> {
   final _formKey = GlobalKey<FormState>();
   final _budgetController = TextEditingController();
+  final _baseRateController = TextEditingController();
 
   List<BillEntry> _bills = [];
   String _predictionTarget = 'current_month';
@@ -42,6 +43,11 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
       _budgetController.text = budget;
     }
 
+    final baseRate = await BillService.loadBaseRate();
+    if (baseRate != null) {
+      _baseRateController.text = baseRate;
+    }
+
     setState(() {});
   }
 
@@ -54,10 +60,12 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
       final bills = await BillService.saveBills(_bills);
 
       await BillService.saveBudget(double.parse(_budgetController.text));
+      await BillService.saveBaseRate(double.parse(_baseRateController.text));
 
       await PredictionService.savePrediction(
         predictionTarget: _predictionTarget,
         budget: double.parse(_budgetController.text),
+        // baseRate: double.parse(_baseRateController.text),
         bills: bills,
       );
 
@@ -77,6 +85,7 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
     for (final bill in _bills) {
       bill.dispose();
     }
+    _baseRateController.dispose();
     super.dispose();
   }
 
@@ -137,6 +146,27 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
                   prefixText: '₱ ',
                   border: OutlineInputBorder(),
                 ),
+              ),
+
+              const SizedBox(height: 24),
+
+              //input field for entering the base rate (₱/kWh).
+              TextFormField(
+                controller: _baseRateController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Base Rate (₱/kWh)', 
+                  hintText: '12.5',               
+                  prefixText: '₱ ',               
+                  suffixText: '/kWh',            
+                  border: OutlineInputBorder(),   
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Enter base rate'; 
+                  }
+                  return null;
+                },
               ),
 
               const SizedBox(height: 24),
