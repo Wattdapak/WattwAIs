@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:wattwais/core/theme/app_theme.dart';
 //import 'package:wattwais/models/wattwais_models.dart';
 import 'package:wattwais/widgets/app_chrome.dart';
+import 'package:wattwais/widgets/bottom_nav.dart';
 //import 'package:wattwais/screens/dashboard.dart';
 //import '../widgets/bottom_nav.dart';
 import '../widgets/screenscaffold.dart';
-// import 'package:wattwais/widgets/bottom_nav.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,7 +19,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ScreenScaffold(
+    return Scaffold(
+      body: ScreenScaffold(
       child: Column(
         children: [
           Container(
@@ -119,7 +120,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-    );
+    ),
+    bottomNavigationBar: const WattBottomNav(currentIndex: 3),
+  );
   }
 }
 

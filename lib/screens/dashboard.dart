@@ -1,97 +1,134 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../data/appliance_templates.dart';
-import '../../models/appliance_model.dart';
-import '../../models/appliance_template.dart';
+import 'package:wattwais/core/routes/screen_routes.dart';
+import 'package:wattwais/widgets/bottom_nav.dart';
 
-import '../../widgets/appliances/appliance_chip.dart';
-import '../../widgets/appliances/appliance_inventory_card.dart';
-
-class ApplianceSection extends StatelessWidget {
-  const ApplianceSection({
-    super.key,
-    required this.appliances,
-    required this.onAddTemplate,
-    required this.onAddManual,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onChanged,
-  });
-
-  final List<ApplianceModel> appliances;
-  final ValueChanged<ApplianceTemplate> onAddTemplate;
-  final VoidCallback onAddManual;
-  final ValueChanged<ApplianceModel> onEdit;
-  final ValueChanged<String> onDelete;
-  final ValueChanged<ApplianceModel> onChanged;
-
+class Dashboard extends StatelessWidget {
+  const Dashboard({super.key});
+  
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        //title and add button
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Appliances',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            FilledButton.icon(
-              onPressed: onAddManual,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Add'),
-            ),
-          ],
+    return Scaffold(
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () {
+            context.go(Routes.predictBill);
+          },
+          child: const Text('Predict Bill'),
         ),
+      ),
 
-        const SizedBox(height: 12),
-
-        //list of appliance templates
-        SizedBox(
-          height: 110,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: applianceTemplates.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final template = applianceTemplates[index];
-              final selected = appliances.any((a) => a.name == template.name);
-
-              return ApplianceChip(
-                appliance: template,
-                selected: selected,
-                onTap: () => onAddTemplate(template),
-              );
-            },
-          ),
-        ),
-
-        const SizedBox(height: 18),
-
-        //inventory list
-        if (appliances.isEmpty)
-          const Text('No saved appliances yet.')
-        else
-          ...appliances.map(
-            (model) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: GestureDetector(
-                onTap: () => onEdit(model),
-                child: ApplianceInventoryCard(
-                  appliance: model,
-                  onChanged: onChanged,
-                  onDelete: () => onDelete(model.id),
-                ),
-              ),
-            ),
-          ),
-      ],
+      bottomNavigationBar: const WattBottomNav(
+        currentIndex: 0,
+      ),
     );
   }
 }
+
+
+// class Dashboard extends StatefulWidget {
+//   const Dashboard({super.key});
+
+//   @override
+//   State<Dashboard> createState() => _DashboardState();
+// }
+
+// class _DashboardState extends State<Dashboard> {
+//   var _tab = 0;
+//   var _showSetup = false;
+//   var _predicting = false;
+//   var _appliances = defaultAppliances;
+//   var _bill = 0.0;
+//   var _usage = 0.0;
+//   var _budgetUsage = 500.0;
+
+//   void _openSetup() {
+//     setState(() => _showSetup = true);
+//   }
+
+//   Future<void> _predictBill({required double bill, required double rate}) async {
+//     setState(() => _predicting = true);
+    
+//     await Future<void>.delayed(const Duration(milliseconds: 900));
+//     if (!mounted) return;
+//     setState(() {
+//       _predicting = false;
+//       _showSetup = false;
+//       _tab = 0;
+//       // TODO: replace with actuall values
+//       _bill = bill;
+//       _usage = bill / rate;
+//     });
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(
+//         content: Text('Prediction refreshed from your appliance inventory.'),
+//         behavior: SnackBarBehavior.floating,
+//       ),
+//     );
+//   }
+
+//   void _updateAppliance(int index, Appliance appliance) {
+//     setState(() {
+//       _appliances = [
+//         for (var i = 0; i < _appliances.length; i++)
+//           if (i == index) appliance else _appliances[i],
+//       ];
+//     });
+//   }
+
+//   void _removeAppliance(int index) {
+//     setState(() {
+//       _appliances = [
+//         for (var i = 0; i < _appliances.length; i++)
+//           if (i != index) _appliances[i],
+//       ];
+//     });
+//   }
+
+//   void _addAppliance(Appliance appliance) {
+//     if (_appliances.any((item) => item.name == appliance.name)) return;
+//     setState(() => _appliances = [..._appliances, appliance]);
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     if (_showSetup) {
+//       return SetupScreen(
+//         appliances: _appliances,
+//         isPredicting: _predicting,
+//         onBack: () => setState(() => _showSetup = false),
+//         onAdd: _addAppliance,
+//         onChange: _updateAppliance,
+//         onDelete: _removeAppliance,
+//         onPredict: ({required double bill, required double rate}) => 
+//           _predictBill(bill: bill, rate: rate),
+//       );
+//     }
+
+//     return Scaffold(
+//       body: AnimatedSwitcher(
+//         duration: const Duration(milliseconds: 260),
+//         child: IndexedStack(
+//           key: ValueKey(_tab),
+//           index: _tab,
+//           children: [
+//             HomeScreen(
+//               onPredict: _openSetup,
+//               bill: _bill,
+//               usage: _usage,
+//               budgetUsage: _budgetUsage,
+//             ),
+//             const StatsScreen(),
+//             TipsScreen(),
+//             ProfileScreen(),
+//           ],
+//         ),
+//       ),
+//       bottomNavigationBar: WattBottomNav(
+//         currentIndex: _tab,
+//         onChanged: (index) => setState(() => _tab = index),
+//       ),
+//     );
+//   }
+// }
