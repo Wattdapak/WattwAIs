@@ -31,37 +31,45 @@ class BillCard extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            //bill amount input field
-            TextFormField(
-              controller: entry.billController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Bill Amount',
-                hintText: '3250',
-                prefixText: '₱ ',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Required';
-                }
-                return null;
-              },
-            ),
+            Row(
+              children: [
+                //bill amount input field
+                Expanded (
+                  child: TextFormField(
+                    controller: entry.billController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Bill Amount',
+                      hintText: '3250',
+                      prefixText: '₱ ',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Required';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
 
-            const SizedBox(height: 16),
+                const SizedBox(width: 16),
 
-            // kWh usage input field (optional)
-            TextFormField(
-              controller: entry.kwhController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'kWh Used (Optional)',
-                hintText: '285',
-                suffixText: 'kWh',
-                border: OutlineInputBorder(),
-              ),
-            ),
+                // kWh usage input field (optional)
+                Expanded(
+                  child: TextFormField(
+                    controller: entry.kwhController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'kWh Used (Optional)',
+                      hintText: '285',
+                      suffixText: 'kWh',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            )
           ],
         ),
       ),
