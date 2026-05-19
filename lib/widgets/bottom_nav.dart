@@ -1,11 +1,10 @@
-
-
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:wattwais/core/routes/screen_routes.dart';
 import 'package:wattwais/core/theme/app_theme.dart';
-//import 'package:wattwais/models/wattwais_models.dart';
-//import 'package:wattwais/widgets/app_chrome.dart';
-//import 'package:wattwais/screens/dashboard.dart';
 
 class _NavItem extends StatelessWidget {
   const _NavItem({
@@ -33,12 +32,6 @@ class _NavItem extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           width: 72,
           padding: const EdgeInsets.symmetric(vertical: 8),
-          // decoration: BoxDecoration(
-          //   borderRadius: BorderRadius.circular(18),
-          //   border: selected
-          //       ? Border.all(color: AppColors.text, width: 2)
-          //       : null,
-          // ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -78,17 +71,15 @@ class WattBottomNav extends StatelessWidget {
   const WattBottomNav({
     super.key,
     required this.currentIndex,
-    required this.onChanged,
   });
 
   final int currentIndex;
-  final ValueChanged<int> onChanged;
 
   static const _items = [
-    (Icons.home_outlined, 'Home'),
-    (Icons.bar_chart_rounded, 'Stats'),
-    (Icons.lightbulb_outline_rounded, 'Tips'),
-    (Icons.person_outline_rounded, 'Me'),
+    (Icons.home_outlined, 'Home', Routes.dashboard),
+    (Icons.bar_chart_rounded, 'Stats', Routes.statscreen),
+    (Icons.lightbulb_outline_rounded, 'Tips', Routes.tipsscreen),
+    (Icons.person_outline_rounded, 'Me', Routes.profilescreen),
   ];
 
   @override
@@ -97,7 +88,12 @@ class WattBottomNav extends StatelessWidget {
       height: 147,
       decoration: const BoxDecoration(
         color: AppColors.ink,
-        border: Border(top: BorderSide(color: AppColors.mutedBorder, width: 1)),
+        border: Border(
+          top: BorderSide(
+            color: AppColors.mutedBorder,
+            width: 1,
+          ),
+        ),
       ),
       padding: EdgeInsets.fromLTRB(
         16,
@@ -113,7 +109,9 @@ class WattBottomNav extends StatelessWidget {
               icon: item.$2.$1,
               label: item.$2.$2,
               selected: item.$1 == currentIndex,
-              onTap: () => onChanged(item.$1),
+              onTap: () {
+                context.go(item.$2.$3);
+              },
             ),
         ],
       ),

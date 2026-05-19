@@ -3,6 +3,10 @@ import "package:wattwais/core/routes/screen_routes.dart";
 
 import "package:wattwais/screens/dashboard.dart";
 import "package:wattwais/screens/splash_screen.dart";
+import "package:wattwais/screens/profilescreen.dart";
+import "package:wattwais/screens/tipsscreen.dart";
+import "package:wattwais/screens/statscreen.dart";
+import "package:wattwais/screens/predict_bill_screen.dart";
 
 class WattwaisRouter {
   static final router = GoRouter(
@@ -17,6 +21,23 @@ class WattwaisRouter {
       GoRoute(
         path: Routes.dashboard,
         builder: (context, state) => const Dashboard(),
+      ),
+
+      GoRoute(
+        path: Routes.profilescreen,
+        builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: Routes.tipsscreen,
+        builder: (context, state) => const TipsScreen(),
+      ),
+      GoRoute(
+        path: Routes.statscreen,
+        builder: (context, state) => const StatsScreen(),
+      ),
+      GoRoute(
+        path: Routes.predictBill,
+        builder: (context, state) => const PredictBillScreen(),
       ),
     ],
   );
