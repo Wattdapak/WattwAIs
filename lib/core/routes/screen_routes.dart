@@ -3,6 +3,11 @@
 class Routes {
   static const dashboard = '/dashboard';
   static const splashscreen = '/splashscreen';
+  static const profilescreen = '/profilescreen';
+  static const tipsscreen = '/tipsscreen';
+  static const statscreen = '/statscreen';
+  static const homescreen = '/homescreen';
+  static const predictBill = '/predict-bill';
   // static const billhistory = '/bill-history';
   // static const appliance = '/appliance';
   // static const analytics = '/analytics';

@@ -4,16 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:wattwais/core/theme/app_theme.dart';
 //import 'package:wattwais/models/wattwais_models.dart';
 import 'package:wattwais/widgets/app_chrome.dart';
+import 'package:wattwais/widgets/bottom_nav.dart';
 //import 'package:wattwais/screens/dashboard.dart';
 //import '../widgets/bottom_nav.dart';
 import '../widgets/screenscaffold.dart';
+
 
 class TipsScreen extends StatelessWidget {
   const TipsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ScreenScaffold(
+    return Scaffold(
+      body: ScreenScaffold(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -106,6 +109,8 @@ class TipsScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ),
+    bottomNavigationBar: const WattBottomNav(currentIndex: 2),
+  );
   }
 }

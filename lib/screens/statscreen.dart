@@ -6,96 +6,99 @@ import 'package:flutter/material.dart';
 import 'package:wattwais/core/theme/app_theme.dart';
 import 'package:wattwais/models/wattwais_models.dart';
 import 'package:wattwais/widgets/app_chrome.dart';
-//import 'package:wattwais/screens/dashboard.dart';
-//import '../widgets/bottom_nav.dart';
 import '../widgets/screenscaffold.dart';
+import 'package:wattwais/widgets/bottom_nav.dart';
+
 
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ScreenScaffold(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Your usage', style: context.titleLarge),
-          const SizedBox(height: 8),
-          const Text(
-            'Last 7 months',
-            style: TextStyle(color: AppColors.muted, fontSize: 14, fontFamily: 'Helvetica Neue'),
-          ),
-          const SizedBox(height: 24),
-          const _AverageCard(),
-          const SizedBox(height: 22),
-          const WattCard(
-            padding: EdgeInsets.fromLTRB(26, 26, 26, 22),
-            child: SizedBox(
-              height: 238,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Monthly kWh',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'Helvetica Neue'),
-                  ),
-                  Expanded(child: MonthlyChart()),
-                ],
+    return Scaffold(
+      body: ScreenScaffold(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Your usage', style: context.titleLarge),
+            const SizedBox(height: 8),
+            const Text(
+              'Last 7 months',
+              style: TextStyle(color: AppColors.muted, fontSize: 14, fontFamily: 'Helvetica Neue'),
+            ),
+            const SizedBox(height: 24),
+            const _AverageCard(),
+            const SizedBox(height: 22),
+            const WattCard(
+              padding: EdgeInsets.fromLTRB(26, 26, 26, 22),
+              child: SizedBox(
+                height: 238,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Monthly kWh',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'Helvetica Neue'),
+                    ),
+                    Expanded(child: MonthlyChart()),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 18),
-          const Row(
-            children: [
-              Expanded(
-                child: _SmallStat(
-                  title: 'PEAK HOUR',
-                  value: '7–9 PM',
-                  label: '42% of daily use',
-                ),
-              ),
-              SizedBox(width: 18),
-              Expanded(
-                child: _SmallStat(
-                  title: 'VS PREV MONTH',
-                  value: '-12%',
-                  label: 'More efficient',
-                  accent: true,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          const WattCard(
-            child: Row(
+            const SizedBox(height: 18),
+            const Row(
               children: [
-                IconBubble(icon: Icons.calendar_today_outlined),
+                Expanded(
+                  child: _SmallStat(
+                    title: 'PEAK HOUR',
+                    value: '7–9 PM',
+                    label: '42% of daily use',
+                  ),
+                ),
                 SizedBox(width: 18),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Next billing',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontFamily: 'Helvetica Neue',
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SizedBox(height: 6),
-                      Text(
-                        'Estimated ₱2,184 · Aug 24',
-                        style: TextStyle(color: AppColors.muted, fontSize: 14, fontFamily: 'Helvetica Neue'),
-                      ),
-                    ],
+                  child: _SmallStat(
+                    title: 'VS PREV MONTH',
+                    value: '-12%',
+                    label: 'More efficient',
+                    accent: true,
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 18),
+            const WattCard(
+              child: Row(
+                children: [
+                  IconBubble(icon: Icons.calendar_today_outlined),
+                  SizedBox(width: 18),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Next billing',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontFamily: 'Helvetica Neue',
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Estimated ₱2,184 · Aug 24',
+                          style: TextStyle(color: AppColors.muted, fontSize: 14, fontFamily: 'Helvetica Neue'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
+      bottomNavigationBar: const WattBottomNav(currentIndex: 1),
     );
   }
 }
