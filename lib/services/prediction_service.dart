@@ -20,6 +20,8 @@ class PredictionService {
     required String predictionTarget,
     required double budget,
     required List<BillModel> bills,
+    required double baseRate,
+    required List appliances,
   }) async {
     final user = _auth.currentUser;
 
@@ -35,6 +37,20 @@ class PredictionService {
       'prediction_target': predictionTarget,
       'budget': budget,
       'bills': bills.map((bill) => bill.toMap()).toList(),
+      'base_rate': baseRate,
+      'appliances': appliances.map((appliance) {
+        try {
+          return (appliance as dynamic).toMap();
+        } catch (_) {
+          try {
+            return (appliance as dynamic).toJson();
+          } catch (_) {
+            return appliance;
+          }
+        }
+      }).toList(),
+      
+      // 'appliances': appliances.map((appliance) => appliance.toJson()).toList(),
       'created_at': FieldValue.serverTimestamp(),
     });
   }

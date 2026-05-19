@@ -7,6 +7,7 @@ class Appliance {
     required this.watts,
     required this.hoursPerDay,
     required this.quantity,
+    required this.daysPerWeek,
   });
 
   final String name;
@@ -14,18 +15,20 @@ class Appliance {
   final int watts;
   final int hoursPerDay;
   final int quantity;
+  final int daysPerWeek;
 
-  Appliance copyWith({int? watts, int? hoursPerDay, int? quantity}) {
+  Appliance copyWith({int? watts, int? hoursPerDay, int? quantity, int? daysPerWeek}) {
     return Appliance(
       name: name,
       icon: icon,
       watts: watts ?? this.watts,
       hoursPerDay: hoursPerDay ?? this.hoursPerDay,
       quantity: quantity ?? this.quantity,
+      daysPerWeek: daysPerWeek ?? this.daysPerWeek,
     );
   }
 
-  int get monthlyKwh => ((watts * hoursPerDay * quantity * 30) / 1000).round();
+  int get monthlyKwh => ((watts * hoursPerDay * quantity * (daysPerWeek / 7) * 30) / 1000).round();
 }
 
 class UsageMonth {
@@ -42,6 +45,7 @@ final defaultAppliances = <Appliance>[
     watts: 1500,
     hoursPerDay: 8,
     quantity: 1,
+    daysPerWeek: 7,
   ),
   const Appliance(
     name: 'Refrigerator',
@@ -49,6 +53,7 @@ final defaultAppliances = <Appliance>[
     watts: 200,
     hoursPerDay: 24,
     quantity: 1,
+    daysPerWeek: 7,
   ),
   const Appliance(
     name: 'Ceiling Fan',
@@ -56,6 +61,7 @@ final defaultAppliances = <Appliance>[
     watts: 75,
     hoursPerDay: 12,
     quantity: 3,
+    daysPerWeek: 7,
   ),
   const Appliance(
     name: 'Smart TV',
@@ -63,6 +69,7 @@ final defaultAppliances = <Appliance>[
     watts: 120,
     hoursPerDay: 5,
     quantity: 1,
+    daysPerWeek: 7,
   ),
 ];
 
