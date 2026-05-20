@@ -17,20 +17,32 @@ class RoundIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkResponse(
-      onTap: onTap,
-      radius: 24,
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          icon,
-          color: foreground,
-          size: 22,
+    // Guarantees an accessible 44x44 minimum interactive boundary 
+    // without altering the underlying 34x34 visual design.
+    return SizedBox(
+      width: 44,
+      height: 44,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 22,
+        containedInkWell: false,
+        highlightColor: Colors.transparent,
+        child: Center(
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Icon(
+                icon,
+                color: foreground,
+                size: 22,
+              ),
+            ),
+          ),
         ),
       ),
     );

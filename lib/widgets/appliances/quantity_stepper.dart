@@ -38,21 +38,26 @@ class QuantityStepper extends StatelessWidget {
               math.max(1, value - 1),
             ),
           ),
+          // Set to min axis alignment to explicitly clear any vertical bounds limits
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
                 'Qty',
                 style: TextStyle(
                   color: AppColors.muted,
-                  fontSize: 12,
+                  fontSize: 11,
+                  height: 1.0,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 '$value',
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
+                  height: 1.1,
                 ),
               ),
             ],

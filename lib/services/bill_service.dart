@@ -43,6 +43,7 @@ class BillService {
     if (user == null) return;
 
     for (final bill in bills) {
+      if (bill.isDisposed) continue;
       final doc = await _firestore
           .collection('users')
           .doc(user.uid)
@@ -53,9 +54,14 @@ class BillService {
       if (doc.exists) {
         final billModel = BillModel.fromMap(doc.data()!);
 
-        bill.billController.text = billModel.billAmount.toString();
-        if (billModel.kwhUsed != null) {
-          bill.kwhController.text = billModel.kwhUsed.toString();
+        if (bill.isDisposed) continue;
+        try {
+          bill.billController.text = billModel.billAmount.toString();
+          if (billModel.kwhUsed != null) {
+            bill.kwhController.text = billModel.kwhUsed.toString();
+          }
+        } catch (_) {
+          // Ignore updates if controllers were disposed mid-flight.
         }
       }
     }
@@ -123,7 +129,7 @@ class BillService {
         .doc("budget")
         .set({"amount": amount});
   }
-  
+
   //load base rate from Firestore.
   static Future<String?> loadBaseRate() async {
     final user = _auth.currentUser;
@@ -157,9 +163,6 @@ class BillService {
         .doc(user.uid)
         .collection('settings')
         .doc('base_rate')
-        .set({
-      'amount': amount,
-    });
+        .set({'amount': amount});
   }
-
 }

@@ -98,7 +98,7 @@ class _LogoScreenState extends State<LogoScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Start managing your electricity, wisely.',
+              'Start managing your electricity wAIsly.',
               style: TextStyle(
                 color: AppColors.muted,
                 fontSize: 15,

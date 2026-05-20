@@ -1,23 +1,17 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+
 import 'package:http/http.dart' as http;
 
+import '../core/config/app_config.dart';
 import '../models/appliance_input.dart';
 import '../models/prediction_result.dart';
 
-class PredictionService {
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://127.0.0.1:8000';
-    }
+class PredictionApiService {
+  const PredictionApiService({http.Client? client}) : _client = client;
 
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        return 'http://10.0.2.2:8000';
-      default:
-        return 'http://127.0.0.1:8000';
-    }
-  }
+  final http.Client? _client;
+
+  http.Client get client => _client ?? http.Client();
 
   Future<PredictionResult> predictBill({
     required List<ApplianceInput> appliances,
@@ -26,7 +20,7 @@ class PredictionService {
     required double sixMonthTotalKwh,
     required double monthlyBudget,
   }) async {
-    final url = Uri.parse('$baseUrl/predict');
+    final url = Uri.parse('${AppConfig.predictionApiBaseUrl}/predict');
 
     final body = {
       'appliances': appliances.map((item) => item.toJson()).toList(),
@@ -36,13 +30,15 @@ class PredictionService {
       'monthly_budget': monthlyBudget,
     };
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(body),
-    );
+    final response = await client
+        .post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(AppConfig.predictionApiTimeout);
 
     if (response.statusCode != 200) {
       throw Exception(
@@ -56,8 +52,10 @@ class PredictionService {
 
   Future<bool> checkBackendHealth() async {
     try {
-      final url = Uri.parse('$baseUrl/');
-      final response = await http.get(url);
+      final url = Uri.parse('${AppConfig.predictionApiBaseUrl}/');
+      final response = await client
+          .get(url)
+          .timeout(const Duration(seconds: 5));
 
       return response.statusCode == 200;
     } catch (_) {
