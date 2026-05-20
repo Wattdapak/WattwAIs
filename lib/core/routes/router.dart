@@ -8,6 +8,7 @@ import "package:wattwais/screens/tipsscreen.dart";
 import "package:wattwais/screens/statscreen.dart";
 import "package:wattwais/screens/predict_bill_screen.dart";
 import "package:wattwais/screens/adjust_screen.dart";
+import "package:wattwais/screens/notifications_screen.dart";
 
 class WattwaisRouter {
   static final router = GoRouter(
@@ -47,6 +48,11 @@ class WattwaisRouter {
       GoRoute(
         path: Routes.predictBill,
         builder: (context, state) => const PredictBillScreen(),
+      ),
+
+      GoRoute(
+        path: Routes.notifications,
+        builder: (context, state) => const NotificationsScreen(),
       ),
     ],
   );

@@ -28,10 +28,7 @@ class ApplianceInventoryCard extends StatelessWidget {
           // Top row: Icon, Name, and Delete button
           Row(
             children: [
-              IconBubble(
-                icon: appliance.icon,
-                size: 48,
-              ),
+              IconBubble(icon: appliance.icon, size: 48),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -68,7 +65,7 @@ class ApplianceInventoryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          
+
           // Bottom section: Adaptable input elements
           LayoutBuilder(
             builder: (context, constraints) {
@@ -77,11 +74,12 @@ class ApplianceInventoryCard extends StatelessWidget {
 
               // Threshold to switch layout: if 4 items + spacing don't fit well, switch to 2x2 grid
               // Adjust 360 based on your design's minimum comfortable width per item
-              final bool useGrid = maxWidth < 360; 
-              
+              final bool useGrid = maxWidth < 360;
+
               // Dynamic width calculation
               final double itemWidth = useGrid
-                  ? (maxWidth - spacing) / 2       // 2 items per row
+                  ? (maxWidth - spacing) /
+                        2 // 2 items per row
                   : (maxWidth - (spacing * 3)) / 4; // 4 items per row
 
               return Wrap(
@@ -94,33 +92,44 @@ class ApplianceInventoryCard extends StatelessWidget {
                     child: QuantityStepper(
                       value: appliance.quantity,
                       onChanged: (value) {
-                        onChanged(
-                          appliance.copyWith(
-                            quantity: value,
-                          ),
-                        );
+                        onChanged(appliance.copyWith(quantity: value));
                       },
                     ),
                   ),
                   SizedBox(
                     width: itemWidth,
-                    child: ValuePill(
+                    child: EditableValuePill(
                       label: 'Watts',
-                      value: '${appliance.watts}',
+                      value: appliance.watts,
+                      min: 1,
+                      max: 20000,
+                      onChanged: (value) {
+                        onChanged(appliance.copyWith(watts: value));
+                      },
                     ),
                   ),
                   SizedBox(
                     width: itemWidth,
-                    child: ValuePill(
+                    child: EditableValuePill(
                       label: 'Hrs/day',
-                      value: '${appliance.hoursPerDay}',
+                      value: appliance.hoursPerDay,
+                      min: 0,
+                      max: 24,
+                      onChanged: (value) {
+                        onChanged(appliance.copyWith(hoursPerDay: value));
+                      },
                     ),
                   ),
                   SizedBox(
                     width: itemWidth,
-                    child: ValuePill(
+                    child: EditableValuePill(
                       label: 'days/wk',
-                      value: '${appliance.daysPerWeek}',
+                      value: appliance.daysPerWeek,
+                      min: 1,
+                      max: 7,
+                      onChanged: (value) {
+                        onChanged(appliance.copyWith(daysPerWeek: value));
+                      },
                     ),
                   ),
                 ],

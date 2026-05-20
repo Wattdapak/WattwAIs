@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:wattwais/core/routes/screen_routes.dart';
 
 import '../models/appliance_model.dart';
 import '../models/bill_entry.dart';
@@ -14,6 +18,7 @@ import '../services/prediction_store_service.dart';
 import '../widgets/bill_card.dart';
 import '../widgets/bottom_nav.dart';
 import '../utils/bill_utils.dart';
+import '../data/appliance_templates.dart';
 
 import 'appliance_section.dart';
 
@@ -31,6 +36,12 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
   final _budgetController = TextEditingController();
   final _baseRateController = TextEditingController();
 
+  Timer? _budgetSaveDebounce;
+  Timer? _baseRateSaveDebounce;
+  bool _budgetDirty = false;
+  bool _baseRateDirty = false;
+  bool _suspendSettingsListeners = false;
+
   final _newApplianceNameController = TextEditingController();
   final _newApplianceWattsController = TextEditingController();
   final _newApplianceQuantityController = TextEditingController(text: '1');
@@ -42,18 +53,54 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
 
   String _predictionTarget = 'current_month';
 
-  PredictionResult? _latestPrediction;
   bool _isPredicting = false;
-  bool? _backendHealthy;
+  bool _showBackendWarning = false;
 
   @override
   void initState() {
     super.initState();
+    _budgetController.addListener(_onBudgetChanged);
+    _baseRateController.addListener(_onBaseRateChanged);
     _initialize();
-    _checkBackendHealth();
+  }
+
+  void _onBudgetChanged() {
+    if (_suspendSettingsListeners) return;
+    _budgetDirty = true;
+
+    _budgetSaveDebounce?.cancel();
+    final parsed = double.tryParse(
+      _budgetController.text.replaceAll(',', '').trim(),
+    );
+    if (parsed == null) return;
+
+    _budgetSaveDebounce = Timer(
+      const Duration(milliseconds: 600),
+      () => BillService.saveBudget(parsed),
+    );
+  }
+
+  void _onBaseRateChanged() {
+    if (_suspendSettingsListeners) return;
+    _baseRateDirty = true;
+
+    _baseRateSaveDebounce?.cancel();
+    final parsed = double.tryParse(
+      _baseRateController.text.replaceAll(',', '').trim(),
+    );
+    if (parsed == null) return;
+
+    _baseRateSaveDebounce = Timer(
+      const Duration(milliseconds: 600),
+      () => BillService.saveBaseRate(parsed),
+    );
   }
 
   Future<void> _initialize() async {
+    for (final bill in _bills) {
+      bill.dispose();
+    }
+
     _bills = BillService.generateRequiredMonths(_predictionTarget);
 
     await _loadAppliances();
@@ -61,29 +108,31 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
 
     final budget = await BillService.loadBudget();
     if (budget != null) {
-      _budgetController.text = budget;
+      if (!_budgetDirty) {
+        _suspendSettingsListeners = true;
+        _budgetController.text = budget;
+        _suspendSettingsListeners = false;
+      }
     }
 
     final baseRate = await BillService.loadBaseRate();
     if (baseRate != null) {
-      _baseRateController.text = baseRate;
+      if (!_baseRateDirty) {
+        _suspendSettingsListeners = true;
+        _baseRateController.text = baseRate;
+        _suspendSettingsListeners = false;
+      }
     }
 
-    setState(() {});
-  }
-
-  Future<void> _checkBackendHealth() async {
-    final healthy = await const PredictionApiService().checkBackendHealth();
     if (!mounted) return;
-    setState(() {
-      _backendHealthy = healthy;
-    });
+    setState(() {});
   }
 
   Future<void> _showAddApplianceDialog() async {
     await showDialog<void>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
+        ApplianceTemplate? selectedTemplate;
         return AlertDialog(
           title: const Text('Add Appliance'),
           content: Form(
@@ -92,6 +141,47 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  StatefulBuilder(
+                    builder: (context, setLocalState) {
+                      return DropdownButtonFormField<ApplianceTemplate?>(
+                        initialValue: selectedTemplate,
+                        decoration: const InputDecoration(
+                          labelText: 'Choose from list',
+                        ),
+                        items: [
+                          const DropdownMenuItem<ApplianceTemplate?>(
+                            value: null,
+                            child: Text('Custom'),
+                          ),
+                          ...applianceTemplates.map(
+                            (template) => DropdownMenuItem<ApplianceTemplate?>(
+                              value: template,
+                              child: Text(template.name),
+                            ),
+                          ),
+                        ],
+                        onChanged: (template) {
+                          setLocalState(() {
+                            selectedTemplate = template;
+                          });
+                          if (template == null) return;
+                          _newApplianceNameController.text = template.name;
+                          _newApplianceWattsController.text = template
+                              .defaultWatts
+                              .toString();
+                          _newApplianceQuantityController.text = template
+                              .defaultQuantity
+                              .toString();
+                          _newApplianceHoursController.text = template
+                              .defaultHoursPerDay
+                              .toString();
+                          _newApplianceDaysController.text = template
+                              .defaultDaysPerWeek
+                              .toString();
+                        },
+                      );
+                    },
+                  ),
                   TextFormField(
                     controller: _newApplianceNameController,
                     decoration: const InputDecoration(
@@ -108,9 +198,7 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
                   TextFormField(
                     controller: _newApplianceWattsController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Watts',
-                    ),
+                    decoration: const InputDecoration(labelText: 'Watts'),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -119,9 +207,7 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
                         child: TextFormField(
                           controller: _newApplianceQuantityController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Qty',
-                          ),
+                          decoration: const InputDecoration(labelText: 'Qty'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -140,9 +226,7 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
                   TextFormField(
                     controller: _newApplianceDaysController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Days/week',
-                    ),
+                    decoration: const InputDecoration(labelText: 'Days/week'),
                   ),
                 ],
               ),
@@ -150,14 +234,14 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
                 await _addManualAppliance();
-                if (!mounted) return;
-                Navigator.pop(context);
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
               },
               child: const Text('Add'),
             ),
@@ -169,6 +253,7 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
 
   Future<void> _loadAppliances() async {
     final appliances = await ApplianceService.loadAppliances();
+    if (!mounted) return;
     setState(() {
       _appliances = appliances;
     });
@@ -191,8 +276,11 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
       daysPerWeek: template.defaultDaysPerWeek,
     );
 
-    await ApplianceService.saveAppliance(newAppliance);
-    await _loadAppliances();
+    final id = await ApplianceService.saveAppliance(newAppliance);
+    if (!mounted) return;
+    setState(() {
+      _appliances = [newAppliance.copyWith(id: id ?? ''), ..._appliances];
+    });
   }
 
   Future<void> _addManualAppliance() async {
@@ -208,8 +296,11 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
       daysPerWeek: int.tryParse(_newApplianceDaysController.text) ?? 7,
     );
 
-    await ApplianceService.saveAppliance(newAppliance);
-    await _loadAppliances();
+    final id = await ApplianceService.saveAppliance(newAppliance);
+    if (!mounted) return;
+    setState(() {
+      _appliances = [newAppliance.copyWith(id: id ?? ''), ..._appliances];
+    });
     _clearManualApplianceForm();
   }
 
@@ -222,135 +313,27 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
   }
 
   Future<void> _updateAppliance(ApplianceModel appliance) async {
+    setState(() {
+      _appliances = [
+        for (final item in _appliances)
+          if (item.id == appliance.id) appliance else item,
+      ];
+    });
     await ApplianceService.saveAppliance(appliance);
-    await _loadAppliances();
   }
 
   Future<void> _deleteAppliance(String id) async {
+    setState(() {
+      _appliances = _appliances.where((item) => item.id != id).toList();
+    });
     await ApplianceService.deleteAppliance(id);
-    await _loadAppliances();
-  }
-
-  Future<void> _editAppliance(ApplianceModel model) async {
-    final nameController = TextEditingController(text: model.name);
-    final wattsController = TextEditingController(text: model.watts.toString());
-    final quantityController = TextEditingController(text: model.quantity.toString());
-    final hoursController = TextEditingController(text: model.hoursPerDay.toString());
-    final daysController = TextEditingController(text: model.daysPerWeek.toString());
-
-    final formKey = GlobalKey<FormState>();
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Edit Appliance'),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    decoration: const InputDecoration(labelText: 'Name'),
-                  ),
-                  TextFormField(
-                    controller: wattsController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Watts'),
-                  ),
-                  TextFormField(
-                    controller: quantityController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Quantity'),
-                  ),
-                  TextFormField(
-                    controller: hoursController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Hours/day'),
-                  ),
-                  TextFormField(
-                    controller: daysController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Days/week'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
-
-                final updated = model.copyWith(
-                  name: nameController.text.trim(),
-                  watts: int.parse(wattsController.text),
-                  quantity: int.parse(quantityController.text),
-                  hoursPerDay: int.parse(hoursController.text),
-                  daysPerWeek: int.parse(daysController.text),
-                );
-
-                await _updateAppliance(updated);
-                if (!mounted) return;
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _showPredictionDialog(PredictionResult result) async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Prediction Result'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Estimated Bill: ₱ ${result.estimatedBill.toStringAsFixed(2)}'),
-                const SizedBox(height: 6),
-                Text(
-                  'Estimated Monthly kWh: ${result.estimatedMonthlyKwh.toStringAsFixed(2)}',
-                ),
-                const SizedBox(height: 6),
-                Text('Effective Rate: ₱ ${result.effectiveRate.toStringAsFixed(2)}/kWh'),
-                if (result.exceedsBudget != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    result.exceedsBudget!
-                        ? 'Status: Exceeds budget'
-                        : 'Status: Within budget',
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Future<void> _predictBill() async {
     if (!_formKey.currentState!.validate()) return;
 
     try {
+      FocusManager.instance.primaryFocus?.unfocus();
       setState(() {
         _isPredicting = true;
       });
@@ -403,7 +386,7 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
       }
 
       final bills = await BillService.saveBills(_bills);
-      final appliances = await ApplianceService.loadAppliances();
+      final appliances = _appliances;
 
       await BillService.saveBudget(monthlyBudget);
       await BillService.saveBaseRate(baseRate);
@@ -413,18 +396,25 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please enter kWh used for all 6 months to run prediction.'),
+            content: Text(
+              'Please enter kWh used for all 6 months to run prediction.',
+            ),
           ),
         );
         return;
       }
 
-      final sixMonthTotalBill =
-          bills.fold<double>(0.0, (sum, b) => sum + b.billAmount);
-      final sixMonthTotalKwh =
-          bills.fold<double>(0.0, (sum, b) => sum + (b.kwhUsed ?? 0.0));
+      final sixMonthTotalBill = bills.fold<double>(
+        0.0,
+        (sum, b) => sum + b.billAmount,
+      );
+      final sixMonthTotalKwh = bills.fold<double>(
+        0.0,
+        (sum, b) => sum + (b.kwhUsed ?? 0.0),
+      );
 
       PredictionResult? result;
+      String? predictionErrorMessage;
       try {
         final api = PredictionApiService();
         result = await api.predictBill(
@@ -434,10 +424,15 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
           sixMonthTotalKwh: sixMonthTotalKwh,
           monthlyBudget: monthlyBudget,
         );
-
-        _latestPrediction = result;
+        _showBackendWarning = false;
+      } on TimeoutException {
+        _showBackendWarning = true;
+        predictionErrorMessage =
+            'Prediction request timed out. Backend may be waking up, please try again in a few seconds.';
       } catch (e) {
         debugPrint('Prediction API error: $e');
+        _showBackendWarning = true;
+        predictionErrorMessage = 'Prediction failed. Please try again.';
       }
 
       await PredictionStoreService.savePrediction(
@@ -455,23 +450,21 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
         SnackBar(
           content: Text(
             result == null
-                ? 'Inputs saved. Prediction failed.'
+                ? predictionErrorMessage ?? 'Inputs saved. Prediction failed.'
                 : 'Prediction computed and saved',
           ),
         ),
       );
 
-      if (result != null) {
-        await _showPredictionDialog(result);
+      if (result != null && mounted) {
+        context.go(Routes.tipsscreen);
       }
     } catch (e) {
       debugPrint('$e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Prediction failed: $e'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Prediction failed: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -481,8 +474,16 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
     }
   }
 
+  Future<void> _onPredictionTargetChanged(String? value) async {
+    if (value == null || value == _predictionTarget) return;
+    _predictionTarget = value;
+    await _initialize();
+  }
+
   @override
   void dispose() {
+    _budgetSaveDebounce?.cancel();
+    _baseRateSaveDebounce?.cancel();
     _budgetController.dispose();
     _baseRateController.dispose();
     _newApplianceNameController.dispose();
@@ -500,16 +501,14 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Predict Bill'),
-      ),
+      appBar: AppBar(title: const Text('Predict Bill')),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              if (_backendHealthy == false) ...[
+              if (_showBackendWarning) ...[
                 Card(
                   color: Colors.amber.shade100,
                   child: const Padding(
@@ -523,33 +522,28 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
               ],
               const Text(
                 'Prediction Target',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-              RadioListTile<String>(
-                value: 'current_month',
+              RadioGroup<String>(
                 groupValue: _predictionTarget,
-                title: const Text('Current Month'),
-                onChanged: (value) async {
-                  _predictionTarget = value!;
-                  await _initialize();
-                },
-              ),
-              RadioListTile<String>(
-                value: 'next_month',
-                groupValue: _predictionTarget,
-                title: const Text('Next Month'),
-                onChanged: (value) async {
-                  _predictionTarget = value!;
-                  await _initialize();
-                },
+                onChanged: _onPredictionTargetChanged,
+                child: Column(
+                  children: [
+                    RadioListTile<String>(
+                      value: 'current_month',
+                      title: const Text('Current Month'),
+                    ),
+                    RadioListTile<String>(
+                      value: 'next_month',
+                      title: const Text('Next Month'),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               for (final bill in _bills) ...[
-                BillCard(entry: bill),
+                BillCard(key: ValueKey(bill.monthId), entry: bill),
                 const SizedBox(height: 16),
               ],
               const SizedBox(height: 24),
@@ -579,28 +573,49 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
                 appliances: _appliances,
                 onAddTemplate: _addApplianceFromDefault,
                 onAddManual: _showAddApplianceDialog,
-                onEdit: _editAppliance,
                 onDelete: _deleteAppliance,
                 onChanged: _updateAppliance,
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isPredicting ? null : _predictBill,
-                child: _isPredicting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Predict Bill'),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isPredicting ? null : _predictBill,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1792E8),
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: const Color(
+                      0xFF1792E8,
+                    ).withValues(alpha: 0.45),
+                    disabledForegroundColor: Colors.white.withValues(
+                      alpha: 0.8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  child: _isPredicting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Predict Bill'),
+                ),
               ),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: const WattBottomNav(
-        currentIndex: 0,
-      ),
+      bottomNavigationBar: const WattBottomNav(currentIndex: 0),
     );
   }
 }

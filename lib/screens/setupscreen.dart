@@ -602,7 +602,7 @@ class EmptyInventoryCard extends StatelessWidget {
       child: Row(
         children: [
           IconBubble(icon: Icons.add_home_work_outlined),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Text(
               'Choose appliances above to build an accurate home profile.',

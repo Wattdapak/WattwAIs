@@ -56,5 +56,23 @@ class PredictionStoreService {
       'created_at': FieldValue.serverTimestamp(),
     });
   }
-}
 
+  static Stream<Map<String, dynamic>?> streamLatestPrediction() {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return Stream.value(null);
+    }
+
+    return _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('bill_predictions')
+        .orderBy('created_at', descending: true)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isEmpty) return null;
+      return snapshot.docs.first.data();
+    });
+  }
+}

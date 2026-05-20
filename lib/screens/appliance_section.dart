@@ -13,7 +13,6 @@ class ApplianceSection extends StatelessWidget {
     required this.appliances,
     required this.onAddTemplate,
     required this.onAddManual,
-    required this.onEdit,
     required this.onDelete,
     required this.onChanged,
   });
@@ -21,7 +20,6 @@ class ApplianceSection extends StatelessWidget {
   final List<ApplianceModel> appliances;
   final ValueChanged<ApplianceTemplate> onAddTemplate;
   final VoidCallback onAddManual;
-  final ValueChanged<ApplianceModel> onEdit;
   final ValueChanged<String> onDelete;
   final ValueChanged<ApplianceModel> onChanged;
 
@@ -61,7 +59,10 @@ class ApplianceSection extends StatelessWidget {
                   label: const Text('Add'),
                   style: FilledButton.styleFrom(
                     padding: isCompactScreen
-                        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
+                        ? const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          )
                         : null,
                   ),
                 ),
@@ -80,12 +81,25 @@ class ApplianceSection extends StatelessWidget {
                 separatorBuilder: (context, index) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
                   final template = applianceTemplates[index];
-                  final selected = appliances.any((a) => a.name == template.name);
+                  final selected = appliances.any(
+                    (a) => a.name == template.name,
+                  );
 
                   return ApplianceChip(
                     appliance: template,
                     selected: selected,
-                    onTap: () => onAddTemplate(template),
+                    onTap: () {
+                      if (!selected) {
+                        onAddTemplate(template);
+                        return;
+                      }
+
+                      final existing = appliances.where(
+                        (a) => a.name == template.name,
+                      );
+                      if (existing.isEmpty) return;
+                      onDelete(existing.first.id);
+                    },
                   );
                 },
               ),
@@ -106,13 +120,10 @@ class ApplianceSection extends StatelessWidget {
               ...appliances.map(
                 (model) => Padding(
                   padding: const EdgeInsets.only(bottom: 16),
-                  child: GestureDetector(
-                    onTap: () => onEdit(model),
-                    child: ApplianceInventoryCard(
-                      appliance: model,
-                      onChanged: onChanged,
-                      onDelete: () => onDelete(model.id),
-                    ),
+                  child: ApplianceInventoryCard(
+                    appliance: model,
+                    onChanged: onChanged,
+                    onDelete: () => onDelete(model.id),
                   ),
                 ),
               ),

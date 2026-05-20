@@ -52,5 +52,5 @@ Python version is pinned via `../runtime.txt` (repo root).
 Point the Flutter app to your Render service URL:
 
 ```bash
-flutter run --dart-define=PREDICT_API_BASE_URL=https://YOUR-SERVICE.onrender.com
+flutter run --dart-define=PREDICT_API_BASE_URL=https://wattwais.onrender.com
 ```

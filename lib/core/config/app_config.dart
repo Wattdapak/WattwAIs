@@ -5,7 +5,7 @@ class AppConfig {
       String.fromEnvironment('PREDICT_API_BASE_URL');
 
   static const String _defaultProductionBaseUrl =
-      'https://YOUR-RENDER-SERVICE.onrender.com';
+      'https://wattwais.onrender.com';
 
   static String get predictionApiBaseUrl {
     if (_dartDefineBaseUrl.isNotEmpty) {
@@ -17,7 +17,7 @@ class AppConfig {
     }
 
     if (kIsWeb) {
-      return 'http://127.0.0.1:8000';
+      return _defaultProductionBaseUrl;
     }
 
     switch (defaultTargetPlatform) {
@@ -29,8 +29,8 @@ class AppConfig {
     }
   }
 
-  static const Duration predictionApiTimeout = Duration(seconds: 15);
+  static const Duration predictionApiTimeout = Duration(seconds: 45);
 
   // Example for production:
-  // flutter run --dart-define=PREDICT_API_BASE_URL=https://YOUR-RENDER-SERVICE.onrender.com
+  // flutter run --dart-define=PREDICT_API_BASE_URL=https://wattwais.onrender.com
 }

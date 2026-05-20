@@ -1,17 +1,56 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:wattwais/core/theme/app_theme.dart';
 import 'package:wattwais/models/wattwais_models.dart';
+import 'package:wattwais/services/prediction_store_service.dart';
 import 'package:wattwais/widgets/app_chrome.dart';
 import '../widgets/screenscaffold.dart';
 import 'package:wattwais/widgets/bottom_nav.dart';
 
 class StatsScreen extends StatelessWidget {
-  const StatsScreen({super.key});
+  const StatsScreen({super.key, this.latestPrediction});
+
+  final Map<String, dynamic>? latestPrediction;
+
+  List<UsageMonth> _buildUsageHistory(Map<String, dynamic>? record) {
+    final bills = record?['bills'];
+    if (bills is! List || bills.isEmpty) {
+      return usageHistory;
+    }
+
+    final mapped = <UsageMonth>[];
+    for (final item in bills.reversed) {
+      if (item is! Map<String, dynamic>) continue;
+      final month = (item['month'] as String?) ?? '';
+      final kwh = (item['kwh_used'] as num?)?.toDouble() ?? 0.0;
+      final label = month.length >= 7 ? month.substring(5, 7) : '--';
+      mapped.add(UsageMonth(label, kwh));
+    }
+
+    return mapped.isEmpty ? usageHistory : mapped;
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (latestPrediction != null) {
+      return _buildScaffold(context, latestPrediction);
+    }
+
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: PredictionStoreService.streamLatestPrediction(),
+      builder: (context, snapshot) {
+        return _buildScaffold(context, snapshot.data);
+      },
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, Map<String, dynamic>? record) {
+    final prediction = record?['prediction_result'] as Map<String, dynamic>?;
+    final estimatedBill = (prediction?['estimated_bill'] as num?)?.toDouble() ?? 0.0;
+    final estimatedKwh = (prediction?['estimated_monthly_kwh'] as num?)?.toDouble() ?? 0.0;
+    final chartData = _buildUsageHistory(record);
+
     return Scaffold(
       body: ScreenScaffold(
         child: Column(
@@ -23,93 +62,48 @@ class StatsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Last 7 months',
+              'Latest prediction and history',
               style: TextStyle(
-                color: AppColors.muted, 
-                fontSize: 14, 
+                color: AppColors.muted,
+                fontSize: 14,
                 fontFamily: 'Helvetica Neue',
               ),
             ),
             const SizedBox(height: 24),
-            const _AverageCard(),
+            _AverageCard(averageBill: estimatedBill),
             const SizedBox(height: 22),
-            const WattCard(
-              padding: EdgeInsets.fromLTRB(22, 26, 22, 22),
+            WattCard(
+              padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
               child: SizedBox(
                 height: 238,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Monthly kWh',
                       style: TextStyle(
-                        fontSize: 18, 
-                        fontWeight: FontWeight.w800, 
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                         fontFamily: 'Helvetica Neue',
                       ),
                     ),
-                    SizedBox(height: 12),
-                    Expanded(child: MonthlyChart()),
+                    const SizedBox(height: 12),
+                    Expanded(child: MonthlyChart(data: chartData)),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 18),
-            // Side-by-side Adaptive Grid System
-            LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth < 280) {
-                  return const Column(
-                    children: [
-                      _SmallStat(
-                        title: 'PEAK HOUR',
-                        value: '7–9 PM',
-                        label: '42% of daily use',
-                      ),
-                      SizedBox(height: 14),
-                      _SmallStat(
-                        title: 'VS PREV MONTH',
-                        value: '-12%',
-                        label: 'More efficient',
-                        accent: true,
-                      ),
-                    ],
-                  );
-                }
-                return const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _SmallStat(
-                        title: 'PEAK HOUR',
-                        value: '7–9 PM',
-                        label: '42% of daily use',
-                      ),
-                    ),
-                    SizedBox(width: 14),
-                    Expanded(
-                      child: _SmallStat(
-                        title: 'VS PREV MONTH',
-                        value: '-12%',
-                        label: 'More efficient',
-                        accent: true,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 18),
-            const WattCard(
+            WattCard(
               child: Row(
                 children: [
-                  IconBubble(icon: Icons.calendar_today_outlined),
+                  const IconBubble(icon: Icons.calendar_today_outlined),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FittedBox(
+                        const FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
                             'Next billing',
@@ -120,15 +114,15 @@ class StatsScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            'Estimated ₱2,184 · Aug 24',
-                            style: TextStyle(
-                              color: AppColors.muted, 
-                              fontSize: 14, 
+                            'Estimated PHP ${estimatedBill.toStringAsFixed(2)} · ${estimatedKwh.toStringAsFixed(0)} kWh',
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 14,
                               fontFamily: 'Helvetica Neue',
                             ),
                           ),
@@ -148,7 +142,9 @@ class StatsScreen extends StatelessWidget {
 }
 
 class _AverageCard extends StatelessWidget {
-  const _AverageCard();
+  const _AverageCard({required this.averageBill});
+
+  final double averageBill;
 
   @override
   Widget build(BuildContext context) {
@@ -159,10 +155,10 @@ class _AverageCard extends StatelessWidget {
         color: AppColors.blue,
         borderRadius: BorderRadius.circular(28),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'AVG MONTHLY',
             style: TextStyle(
               color: AppColors.ink,
@@ -172,12 +168,12 @@ class _AverageCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              '₱2,340',
-              style: TextStyle(
+              'PHP ${averageBill.toStringAsFixed(2)}',
+              style: const TextStyle(
                 color: AppColors.ink,
                 fontSize: 36,
                 fontWeight: FontWeight.w900,
@@ -185,14 +181,14 @@ class _AverageCard extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(height: 16),
-          FittedBox(
+          const SizedBox(height: 16),
+          const FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              '⌄ 6.2% lower vs last quarter',
+              'Based on your latest prediction',
               style: TextStyle(
-                color: AppColors.ink, 
-                fontSize: 15, 
+                color: AppColors.ink,
+                fontSize: 15,
                 fontFamily: 'Helvetica Neue',
               ),
             ),
@@ -204,12 +200,14 @@ class _AverageCard extends StatelessWidget {
 }
 
 class MonthlyChart extends StatelessWidget {
-  const MonthlyChart({super.key});
+  const MonthlyChart({super.key, required this.data});
+
+  final List<UsageMonth> data;
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _MonthlyChartPainter(usageHistory),
+      painter: _MonthlyChartPainter(data),
       child: const SizedBox.expand(),
     );
   }
@@ -229,8 +227,7 @@ class _MonthlyChartPainter extends CustomPainter {
     final chartBottom = size.height - 32;
     final maxKwh = data.map((item) => item.kwh).reduce(math.max);
     final minKwh = data.map((item) => item.kwh).reduce(math.min);
-    
-    // Safety check for single records or flat data sets
+
     final delta = (maxKwh - minKwh) == 0 ? 1.0 : (maxKwh - minKwh);
     final gap = size.width / data.length;
     final points = <Offset>[];
@@ -273,7 +270,7 @@ class _MonthlyChartPainter extends CustomPainter {
           colors: [Color(0x4431C6FF), Color(0x0031C6FF)],
         ).createShader(Rect.fromLTWH(0, chartTop, size.width, chartBottom)),
     );
-    
+
     canvas.drawPath(
       path,
       Paint()
@@ -303,60 +300,5 @@ class _MonthlyChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _MonthlyChartPainter oldDelegate) {
     return oldDelegate.data != data;
-  }
-}
-
-class _SmallStat extends StatelessWidget {
-  const _SmallStat({
-    required this.title,
-    required this.value,
-    required this.label,
-    this.accent = false,
-  });
-
-  final String title;
-  final String value;
-  final String label;
-  final bool accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return WattCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              title, 
-              style: context.sectionLabel.copyWith(fontSize: 12, letterSpacing: 0),
-            ),
-          ),
-          const SizedBox(height: 18),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: accent ? AppColors.cyan : AppColors.text,
-                fontSize: 23,
-                fontFamily: 'Helvetica Neue',
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              label,
-              style: const TextStyle(color: AppColors.muted, fontSize: 13),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

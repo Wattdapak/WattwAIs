@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wattwais/core/routes/screen_routes.dart';
-import 'package:wattwais/models/wattwais_models.dart';
+import 'package:wattwais/services/prediction_store_service.dart';
 import 'package:wattwais/widgets/bottom_nav.dart';
 
 // Screen Imports
@@ -17,33 +19,83 @@ class Dashboard extends StatefulWidget {
 }
 
 class _DashboardState extends State<Dashboard> {
-  var _tab = 0;
-  var _appliances = defaultAppliances;
-  var _bill = 0.0;
-  var _usage = 0.0;
-  var _budgetUsage = 500.0;
+  final _tab = 0;
+  final _firestore = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
+  String _name = 'Put Name Here';
 
-  void _updateAppliance(int index, Appliance appliance) {
-    setState(() {
-      _appliances = [
-        for (var i = 0; i < _appliances.length; i++)
-          if (i == index) appliance else _appliances[i],
-      ];
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadName();
   }
 
-  void _removeAppliance(int index) {
-    setState(() {
-      _appliances = [
-        for (var i = 0; i < _appliances.length; i++)
-          if (i != index) _appliances[i],
-      ];
-    });
+  Future<void> _loadName() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final doc = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('settings')
+        .doc('profile')
+        .get();
+
+    final name = (doc.data()?['name'] as String?)?.trim();
+    if (name != null && name.isNotEmpty && mounted) {
+      setState(() {
+        _name = name;
+      });
+    }
   }
 
-  void _addAppliance(Appliance appliance) {
-    if (_appliances.any((item) => item.name == appliance.name)) return;
-    setState(() => _appliances = [..._appliances, appliance]);
+  Future<void> _editName() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final controller = TextEditingController(
+      text: _name == 'Put Name Here' ? '' : _name,
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit Name'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Your Name',
+              hintText: 'Put Name Here',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final next = controller.text.trim();
+                final value = next.isEmpty ? 'Put Name Here' : next;
+                await _firestore
+                    .collection('users')
+                    .doc(user.uid)
+                    .collection('settings')
+                    .doc('profile')
+                    .set({'name': value});
+                if (!dialogContext.mounted) return;
+                setState(() {
+                  _name = value;
+                });
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -53,43 +105,64 @@ class _DashboardState extends State<Dashboard> {
         // Adapt screen layouts if viewed on tablets or landscape screen configurations
         final bool isWideLayout = constraints.maxWidth > 720;
 
-        return Scaffold(
-          // Uses an intentional, responsive container structure to constraint content blowing up on big screens
-          body: Center(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: isWideLayout ? 600 : double.infinity,
-              ),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 260),
-                transitionBuilder: (Widget child, Animation<double> animation) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  );
-                },
-                child: IndexedStack(
-                  key: ValueKey(_tab),
-                  index: _tab,
-                  children: [
-                    HomeScreen(
-                      onPredict: () {
-                        context.go(Routes.predictBill);
-                      },
-                      bill: _bill,
-                      usage: _usage,
-                      budgetUsage: _budgetUsage,
+        return StreamBuilder<Map<String, dynamic>?>(
+          stream: PredictionStoreService.streamLatestPrediction(),
+          builder: (context, snapshot) {
+            final latest = snapshot.data;
+            final prediction =
+                latest?['prediction_result'] as Map<String, dynamic>?;
+            final bill =
+                (prediction?['estimated_bill'] as num?)?.toDouble() ?? 0.0;
+            final usage =
+                (prediction?['estimated_monthly_kwh'] as num?)?.toDouble() ??
+                0.0;
+            final baseline =
+                (prediction?['historical_monthly_kwh'] as num?)?.toDouble() ??
+                1.0;
+
+            return Scaffold(
+              body: Center(
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: isWideLayout ? 600 : double.infinity,
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 260),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          );
+                        },
+                    child: IndexedStack(
+                      key: ValueKey(_tab),
+                      index: _tab,
+                      children: [
+                        HomeScreen(
+                          onPredict: () {
+                            context.go(Routes.predictBill);
+                          },
+                          onTapNotifications: () {
+                            context.push(Routes.notifications);
+                          },
+                          bill: bill,
+                          usage: usage,
+                          budgetUsage: baseline,
+                          latestPrediction: latest,
+                          name: _name,
+                          onEditName: _editName,
+                        ),
+                        StatsScreen(latestPrediction: latest),
+                        TipsScreen(latestPrediction: latest),
+                      ],
                     ),
-                    const StatsScreen(),
-                    const TipsScreen(), // Adding const if constructors support it
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-          bottomNavigationBar: WattBottomNav(
-            currentIndex: 0
-          ),
+              bottomNavigationBar: const WattBottomNav(currentIndex: 0),
+            );
+          },
         );
       },
     );

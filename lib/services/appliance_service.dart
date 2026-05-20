@@ -21,6 +21,7 @@ class ApplianceService {
         .collection('users')
         .doc(user.uid)
         .collection('appliances')
+        .orderBy('created_at', descending: true)
         .get();
 
     return snapshot.docs.map((doc) {
@@ -29,10 +30,10 @@ class ApplianceService {
   }
 
   //save or update appliance
-  static Future<void> saveAppliance(ApplianceModel appliance) async {
+  static Future<String?> saveAppliance(ApplianceModel appliance) async {
     final user = _auth.currentUser;
 
-    if (user == null) return;
+    if (user == null) return null;
 
     final collection = _firestore
         .collection('users')
@@ -40,10 +41,20 @@ class ApplianceService {
         .collection('appliances');
 
     if (appliance.id.isEmpty) {
-      await collection.doc().set(appliance.toMap());
-    } else {
-      await collection.doc(appliance.id).set(appliance.toMap());
+      final doc = collection.doc();
+      await doc.set({
+        ...appliance.toMap(),
+        'created_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      return doc.id;
     }
+
+    await collection.doc(appliance.id).set({
+      ...appliance.toMap(),
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    return appliance.id;
   }
 
   //delete appliance

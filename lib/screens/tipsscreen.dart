@@ -1,14 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:wattwais/core/theme/app_theme.dart';
+import 'package:wattwais/services/prediction_store_service.dart';
 import 'package:wattwais/widgets/app_chrome.dart';
 import 'package:wattwais/widgets/bottom_nav.dart';
 import '../widgets/screenscaffold.dart';
 
 class TipsScreen extends StatelessWidget {
-  const TipsScreen({super.key});
+  const TipsScreen({super.key, this.latestPrediction});
+
+  final Map<String, dynamic>? latestPrediction;
 
   @override
   Widget build(BuildContext context) {
+    if (latestPrediction != null) {
+      return _buildScaffold(context, latestPrediction);
+    }
+
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: PredictionStoreService.streamLatestPrediction(),
+      builder: (context, snapshot) {
+        return _buildScaffold(context, snapshot.data);
+      },
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, Map<String, dynamic>? record) {
+    final prediction = record?['prediction_result'] as Map<String, dynamic>?;
+    final estimatedBill = (prediction?['estimated_bill'] as num?)?.toDouble();
+    final estimatedKwh = (prediction?['estimated_monthly_kwh'] as num?)
+        ?.toDouble();
+    final exceedsBudget = prediction?['exceeds_budget'] as bool?;
+
+    final appliances = (record?['appliances'] as List?)?.cast<dynamic>() ?? [];
+    final applianceTips = _buildApplianceTips(
+      appliances: appliances,
+      exceedsBudget: exceedsBudget == true,
+    );
+
     return Scaffold(
       backgroundColor: AppColors.ink,
       body: ScreenScaffold(
@@ -25,33 +53,35 @@ class TipsScreen extends StatelessWidget {
               style: TextStyle(color: AppColors.muted, fontSize: 14),
             ),
             const SizedBox(height: 22),
-            const WattCard(
+            WattCard(
               color: AppColors.navyPanel,
               borderColor: AppColors.border,
-              padding: EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconBubble(icon: Icons.thermostat_rounded),
-                  SizedBox(width: 16),
+                  const IconBubble(icon: Icons.auto_graph_rounded),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FittedBox(
+                        const FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            'Raise AC by 1°C',
+                            'Latest Prediction',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Text(
-                          'Estimated savings: ₱420 monthly while keeping your peak hours comfortable.',
-                          style: TextStyle(
+                          prediction == null
+                              ? 'Run Predict Bill to see your latest estimate and recommendation.'
+                              : 'Estimated bill: PHP ${estimatedBill?.toStringAsFixed(2) ?? '0.00'}\nEstimated usage: ${estimatedKwh?.toStringAsFixed(2) ?? '0.00'} kWh\nStatus: ${exceedsBudget == true ? 'Exceeds budget' : 'Within budget'}',
+                          style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 15,
                             height: 1.35,
@@ -64,60 +94,248 @@ class TipsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            const WattCard(
-              padding: EdgeInsets.all(20),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  IconBubble(icon: Icons.schedule_rounded),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            'Shift laundry off peak',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
+            if (applianceTips.isEmpty)
+              const WattCard(
+                padding: EdgeInsets.all(20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    IconBubble(icon: Icons.lightbulb_outline_rounded),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'Add appliances for tips',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Run high-load appliances before 7 PM to lower evening spikes.',
-                          style: TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 15,
-                            height: 1.35,
+                          SizedBox(height: 10),
+                          Text(
+                            'Go to Predict Bill and add your appliances to get personalized savings tips here.',
+                            style: TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 15,
+                              height: 1.35,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            const WattCard(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SkeletonLine(width: 160, height: 18),
-                  SizedBox(height: 16),
-                  SkeletonLine(width: double.infinity, height: 14),
-                  SizedBox(height: 10),
-                  SkeletonLine(width: 220, height: 14),
-                ],
-              ),
-            ),
+                  ],
+                ),
+              )
+            else
+              for (final tip in applianceTips) ...[
+                _TipCard(icon: tip.icon, title: tip.title, body: tip.body),
+                const SizedBox(height: 14),
+              ],
           ],
         ),
       ),
       bottomNavigationBar: const WattBottomNav(currentIndex: 2),
     );
   }
+}
+
+class _TipDefinition {
+  const _TipDefinition({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+}
+
+class _TipCard extends StatelessWidget {
+  const _TipCard({required this.icon, required this.title, required this.body});
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return WattCard(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconBubble(icon: icon),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 15,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+List<_TipDefinition> _buildApplianceTips({
+  required List<dynamic> appliances,
+  required bool exceedsBudget,
+}) {
+  final tips = <_TipDefinition>[];
+
+  for (final appliance in appliances) {
+    final map = appliance is Map ? appliance : null;
+    final rawName = (map?['name'] ?? '').toString().trim();
+    final name = rawName.isEmpty ? 'Appliance' : rawName;
+    final lower = name.toLowerCase();
+
+    final watts = (map?['watts'] as num?)?.toInt();
+    final hours = (map?['hours_per_day'] as num?)?.toInt();
+    final qty = (map?['quantity'] as num?)?.toInt();
+
+    String usageHint() {
+      final parts = <String>[];
+      if (watts != null && watts > 0) parts.add('${watts}W');
+      if (hours != null && hours > 0) parts.add('${hours}h/day');
+      if (qty != null && qty > 1) parts.add('×$qty');
+      if (parts.isEmpty) return '';
+      return ' (${parts.join(' · ')})';
+    }
+
+    if (lower.contains('air') && lower.contains('condition')) {
+      tips.add(
+        _TipDefinition(
+          icon: Icons.ac_unit_rounded,
+          title: '$name: reduce cooling cost${usageHint()}',
+          body: exceedsBudget
+              ? 'Raise the setpoint by 1–2°C and use a fan to stay comfortable. Clean filters help a lot.'
+              : 'Keep doors/windows sealed and clean the filter monthly to maintain efficiency.',
+        ),
+      );
+      continue;
+    }
+
+    if (lower.contains('refrigerator') || lower.contains('fridge')) {
+      tips.add(
+        _TipDefinition(
+          icon: Icons.kitchen,
+          title: '$name: keep it efficient${usageHint()}',
+          body:
+              'Avoid frequent door opening, don’t overfill, and let hot food cool before storing. Good airflow helps it run efficiently.',
+        ),
+      );
+      continue;
+    }
+
+    if (lower == 'tv' || lower.contains('television')) {
+      tips.add(
+        _TipDefinition(
+          icon: Icons.tv_rounded,
+          title: '$name: lower power use${usageHint()}',
+          body:
+              'Reduce brightness/backlight, enable eco mode, and turn off completely instead of leaving it on standby.',
+        ),
+      );
+      continue;
+    }
+
+    if (lower.contains('fan')) {
+      tips.add(
+        _TipDefinition(
+          icon: Icons.toys,
+          title: '$name: run smarter${usageHint()}',
+          body:
+              'Clean the blades regularly and use the lowest comfortable speed. Pair with a slightly higher AC temperature to save more.',
+        ),
+      );
+      continue;
+    }
+
+    if (lower.contains('rice') && lower.contains('cooker')) {
+      tips.add(
+        _TipDefinition(
+          icon: Icons.rice_bowl_rounded,
+          title: '$name: avoid keep-warm waste${usageHint()}',
+          body:
+              'Use “keep warm” only when needed. Turning it off after meals can reduce unnecessary draw.',
+        ),
+      );
+      continue;
+    }
+
+    if (lower.contains('kettle')) {
+      tips.add(
+        _TipDefinition(
+          icon: Icons.local_cafe_rounded,
+          title: '$name: boil only what you need${usageHint()}',
+          body:
+              'Boiling extra water wastes energy. Fill just enough for your cup(s), and descale occasionally for better performance.',
+        ),
+      );
+      continue;
+    }
+
+    if (lower.contains('dehumid')) {
+      tips.add(
+        _TipDefinition(
+          icon: Icons.water_drop_outlined,
+          title: '$name: set a humidity target${usageHint()}',
+          body:
+              'Aim for ~50–60% humidity, keep doors/windows closed, and clean filters to keep it efficient.',
+        ),
+      );
+      continue;
+    }
+
+    if (lower.contains('laptop') || lower.contains('phone')) {
+      tips.add(
+        _TipDefinition(
+          icon: Icons.power_rounded,
+          title: '$name: cut standby draw${usageHint()}',
+          body:
+              'Unplug chargers when not in use. Reduce screen brightness and enable power saver to lower consumption.',
+        ),
+      );
+      continue;
+    }
+
+    tips.add(
+      _TipDefinition(
+        icon: Icons.lightbulb_outline_rounded,
+        title: '$name: quick savings${usageHint()}',
+        body: exceedsBudget
+            ? 'Try reducing usage time where possible and avoid standby power when not needed.'
+            : 'Use only when needed and turn it off fully to avoid standby power draw.',
+      ),
+    );
+  }
+
+  return tips;
 }

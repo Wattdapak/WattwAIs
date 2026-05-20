@@ -1,80 +1,92 @@
 import 'package:flutter/material.dart';
 import 'package:wattwais/core/theme/app_theme.dart';
-//import 'package:wattwais/models/wattwais_models.dart';
 import 'package:wattwais/widgets/app_chrome.dart';
-//import 'package:wattwais/screens/dashboard.dart';
-//import '../widgets/bottom_nav.dart';
 import '../widgets/screenscaffold.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
-    super.key, 
+    super.key,
     required this.onPredict,
     required this.bill,
     required this.usage,
     required this.budgetUsage,
+    required this.latestPrediction,
+    required this.name,
+    required this.onEditName,
+    required this.onTapNotifications,
   });
 
   final VoidCallback onPredict;
   final double bill;
   final double usage;
   final double budgetUsage;
+  final Map<String, dynamic>? latestPrediction;
+  final String name;
+  final VoidCallback onEditName;
+  final VoidCallback onTapNotifications;
 
   @override
   Widget build(BuildContext context) {
+    final insights = _buildHomeInsights(
+      latestPrediction: latestPrediction,
+      fallbackBill: bill,
+      fallbackUsage: usage,
+      fallbackBudgetUsage: budgetUsage,
+    );
+
     return ScreenScaffold(
       background: AppColors.midnight,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final double currentWidth = constraints.maxWidth;
-          // Dynamically handle spacing parameters for small vs normal screens
           final double spacing = currentWidth < 360 ? 10.0 : 14.0;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _HomeHeader(),
+              _HomeHeader(
+                name: name,
+                onTapName: onEditName,
+                onTapNotifications: onTapNotifications,
+              ),
               const SizedBox(height: 22),
               BillHeroCard(
-                bill: bill, 
-                usage: usage, 
-                budgetusage: budgetUsage
+                bill: insights.bill,
+                usage: insights.usage,
+                budgetusage: insights.budgetUsage,
               ),
               const SizedBox(height: 16),
-              
-              // Responsive Metric Grid Container Row
               Row(
                 children: [
                   Expanded(
                     child: MetricCard(
                       icon: Icons.trending_up_rounded,
-                      value: '22.7 kWh',
+                      value:
+                          '${insights.dailyAverageKwh.toStringAsFixed(1)} kWh',
                       label: 'Daily avg',
-                      delta: '-4%',
+                      delta: insights.dailyAverageDelta,
                     ),
                   ),
                   SizedBox(width: spacing),
                   Expanded(
                     child: MetricCard(
-                      icon: Icons.eco_outlined,
-                      value: '12.4 kg',
-                      label: 'CO₂ saved',
-                      delta: '+8%',
+                      icon: Icons.bolt_rounded,
+                      value: '${insights.usage.toStringAsFixed(1)} kWh',
+                      label: 'Monthly estimate',
+                      delta: insights.budgetDelta,
                     ),
                   ),
                 ],
               ),
               SizedBox(height: spacing),
-              const ApplianceUsageCard(),
+              ApplianceUsageCard(insights: insights),
               SizedBox(height: spacing),
-              const AiInsightCard(),
+              AiInsightCard(insight: insights.aiInsight),
               const SizedBox(height: 52),
-              
-              // Bottom Action Button Wrapper
               SizedBox(
                 width: double.infinity,
                 child: PrimaryPillButton(
-                  label: 'Predict next bill  →',
+                  label: 'Predict next bill  ->',
                   onPressed: onPredict,
                 ),
               ),
@@ -87,10 +99,20 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader();
+  const _HomeHeader({
+    required this.name,
+    required this.onTapName,
+    required this.onTapNotifications,
+  });
+
+  final String name;
+  final VoidCallback onTapName;
+  final VoidCallback onTapNotifications;
 
   @override
   Widget build(BuildContext context) {
+    final String firstLetter = _firstLetter(name);
+
     return Row(
       children: [
         Container(
@@ -102,10 +124,10 @@ class _HomeHeader extends StatelessWidget {
               colors: [Color(0xFFE6DFD2), Color(0xFFB7C0CC)],
             ),
           ),
-          child: const Center(
+          child: Center(
             child: Text(
-              'J',
-              style: TextStyle(
+              firstLetter,
+              style: const TextStyle(
                 color: AppColors.ink,
                 fontSize: 23,
                 fontWeight: FontWeight.w900,
@@ -114,34 +136,38 @@ class _HomeHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FittedBox(
+              const FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Good evening',
                   style: TextStyle(
                     color: Color(0xFFC9CEE1),
-                    fontSize: 16,
+                    fontSize: 15,
                     fontFamily: 'Helvetica Neue',
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              SizedBox(height: 8),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Julo',
-                  style: TextStyle(
-                    color: Color(0xFFDDE1F0),
-                    fontSize: 19,
-                    fontFamily: 'Helvetica Neue',
-                    fontWeight: FontWeight.w800,
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: onTapName,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      color: Color(0xFFDDE1F0),
+                      fontSize: 28,
+                      fontFamily: 'Helvetica Neue',
+                      fontWeight: FontWeight.w900,
+                      height: 0.95,
+                    ),
                   ),
                 ),
               ),
@@ -152,14 +178,18 @@ class _HomeHeader extends StatelessWidget {
         Stack(
           clipBehavior: Clip.none,
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                color: Color(0xFF252B56),
-                shape: BoxShape.circle,
+            InkWell(
+              onTap: onTapNotifications,
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF252B56),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.notifications_none_rounded),
               ),
-              child: const Icon(Icons.notifications_none_rounded),
             ),
             Positioned(
               top: 14,
@@ -213,7 +243,7 @@ class BillHeroCard extends StatelessWidget {
               color: Color(0xFF073A68),
               fontSize: 14,
               fontFamily: 'Helvetica Neue',
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 26),
@@ -231,9 +261,9 @@ class BillHeroCard extends StatelessWidget {
                   letterSpacing: 0,
                 ),
                 children: [
-                  TextSpan(text: '₱$billWhole'),
+                  TextSpan(text: 'PHP $billWhole'),
                   TextSpan(
-                    text: ".$billDecimal",
+                    text: '.$billDecimal',
                     style: const TextStyle(color: AppColors.blueDark),
                   ),
                 ],
@@ -249,7 +279,7 @@ class BillHeroCard extends StatelessWidget {
                 color: Color(0xFF083D6D),
                 fontSize: 13,
                 fontFamily: 'Helvetica Neue',
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -267,7 +297,13 @@ class BillHeroCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('0 kWh', style: TextStyle(color: Color(0xFF11517D), fontFamily: 'Helvetica Neue')),
+              const Text(
+                '0 kWh',
+                style: TextStyle(
+                  color: Color(0xFF11517D),
+                  fontFamily: 'Helvetica Neue',
+                ),
+              ),
               Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -365,7 +401,9 @@ class MetricCard extends StatelessWidget {
 }
 
 class ApplianceUsageCard extends StatelessWidget {
-  const ApplianceUsageCard({super.key});
+  const ApplianceUsageCard({super.key, required this.insights});
+
+  final HomeInsights insights;
 
   @override
   Widget build(BuildContext context) {
@@ -378,31 +416,44 @@ class ApplianceUsageCard extends StatelessWidget {
         children: [
           const IconBubble(icon: Icons.lightbulb_outline_rounded),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FittedBox(
+                const FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     'Most Used Appliance',
-                    style: TextStyle(color: AppColors.muted, fontSize: 12, fontFamily: 'Helvetica Neue', fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 13,
+                      fontFamily: 'Helvetica Neue',
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    'Air Conditioner',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, fontFamily: 'Helvetica Neue'),
+                    insights.topApplianceName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'Helvetica Neue',
+                    ),
                   ),
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    '175 kWh · ₱1,400 this month',
-                    style: TextStyle(color: AppColors.muted, fontSize: 12, fontFamily: 'Helvetica Neue'),
+                    '${insights.topApplianceKwh.toStringAsFixed(0)} kWh • PHP ${insights.topApplianceCost.toStringAsFixed(0)} this month',
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 12,
+                      fontFamily: 'Helvetica Neue',
+                    ),
                   ),
                 ),
               ],
@@ -413,16 +464,27 @@ class ApplianceUsageCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '${insights.topAppliancePercent.toStringAsFixed(0)}%',
+                  style: const TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'Helvetica Neue',
+                  ),
+                ),
+              ),
               const FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  '64%',
-                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, fontFamily: 'Helvetica Neue'),
+                  'of usage',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 10,
+                    fontFamily: 'Helvetica Neue',
+                  ),
                 ),
-              ),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text('of usage', style: const TextStyle(color: AppColors.muted, fontSize: 8, fontFamily: 'Helvetica Neue')),
               ),
             ],
           ),
@@ -433,7 +495,9 @@ class ApplianceUsageCard extends StatelessWidget {
 }
 
 class AiInsightCard extends StatelessWidget {
-  const AiInsightCard({super.key});
+  const AiInsightCard({super.key, required this.insight});
+
+  final String insight;
 
   @override
   Widget build(BuildContext context) {
@@ -442,26 +506,26 @@ class AiInsightCard extends StatelessWidget {
       borderColor: AppColors.border,
       radius: 24,
       padding: const EdgeInsets.all(22),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconBubble(icon: Icons.smart_toy_outlined),
+          const IconBubble(icon: Icons.smart_toy_outlined),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'AI Insight',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text(
-                  'Your AC is driving 64% of usage. Raising the thermostat by 1°C could save you ~ ₱420 this month.',
-                  style: TextStyle(
+                  insight,
+                  style: const TextStyle(
                     color: AppColors.muted,
-                    fontSize: 12,
-                    height: 1.16,
+                    fontSize: 14,
+                    height: 1.35,
                     fontFamily: 'Helvetica Neue',
                   ),
                 ),
@@ -472,4 +536,149 @@ class AiInsightCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _firstLetter(String name) {
+  final String trimmed = name.trim();
+  if (trimmed.isEmpty) {
+    return '?';
+  }
+  return trimmed.substring(0, 1).toUpperCase();
+}
+
+class HomeInsights {
+  const HomeInsights({
+    required this.bill,
+    required this.usage,
+    required this.budgetUsage,
+    required this.dailyAverageKwh,
+    required this.dailyAverageDelta,
+    required this.budgetDelta,
+    required this.topApplianceName,
+    required this.topApplianceKwh,
+    required this.topApplianceCost,
+    required this.topAppliancePercent,
+    required this.aiInsight,
+  });
+
+  final double bill;
+  final double usage;
+  final double budgetUsage;
+  final double dailyAverageKwh;
+  final String dailyAverageDelta;
+  final String budgetDelta;
+  final String topApplianceName;
+  final double topApplianceKwh;
+  final double topApplianceCost;
+  final double topAppliancePercent;
+  final String aiInsight;
+}
+
+HomeInsights _buildHomeInsights({
+  required Map<String, dynamic>? latestPrediction,
+  required double fallbackBill,
+  required double fallbackUsage,
+  required double fallbackBudgetUsage,
+}) {
+  final prediction =
+      latestPrediction?['prediction_result'] as Map<String, dynamic>?;
+
+  final double estimatedBill =
+      (prediction?['estimated_bill'] as num?)?.toDouble() ?? fallbackBill;
+  final double estimatedMonthlyKwh =
+      (prediction?['estimated_monthly_kwh'] as num?)?.toDouble() ??
+      fallbackUsage;
+  final double baselineMonthlyKwh =
+      (prediction?['historical_monthly_kwh'] as num?)?.toDouble() ??
+      fallbackBudgetUsage;
+
+  final double dailyAverageKwh = estimatedMonthlyKwh / 30;
+  final double baselineDailyKwh = baselineMonthlyKwh / 30;
+  final double dailyDeltaPercent = baselineDailyKwh <= 0
+      ? 0
+      : ((dailyAverageKwh - baselineDailyKwh) / baselineDailyKwh) * 100;
+
+  final double budgetDeltaPercent = baselineMonthlyKwh <= 0
+      ? 0
+      : ((estimatedMonthlyKwh - baselineMonthlyKwh) / baselineMonthlyKwh) * 100;
+
+  final List<dynamic> appliances =
+      (latestPrediction?['appliances'] as List?)?.cast<dynamic>() ?? [];
+
+  String topName = 'No appliance yet';
+  double topKwh = 0;
+  double topCost = 0;
+  double topPercent = 0;
+  double currentTopMonthlyKwh = -1;
+
+  for (final dynamic item in appliances) {
+    final map = item is Map ? item : null;
+    if (map == null) continue;
+
+    final String name = (map['name'] ?? '').toString().trim();
+    final double watts = (map['watts'] as num?)?.toDouble() ?? 0;
+    final double quantity = (map['quantity'] as num?)?.toDouble() ?? 1;
+    final double hoursPerDay = (map['hours_per_day'] as num?)?.toDouble() ?? 0;
+    final double daysPerWeek = (map['days_per_week'] as num?)?.toDouble() ?? 7;
+
+    final double monthlyKwh =
+        watts * quantity * hoursPerDay * (daysPerWeek / 7.0) * 30.0 / 1000.0;
+    if (monthlyKwh <= currentTopMonthlyKwh) continue;
+    currentTopMonthlyKwh = monthlyKwh;
+
+    final double usageBase = estimatedMonthlyKwh > 0 ? estimatedMonthlyKwh : 1;
+    final double share = (monthlyKwh / usageBase) * 100;
+    final double boundedShare = share.clamp(0, 100).toDouble();
+    final double estimatedCost = estimatedBill * (boundedShare / 100.0);
+
+    topName = name.isEmpty ? 'Appliance' : name;
+    topKwh = monthlyKwh;
+    topCost = estimatedCost;
+    topPercent = boundedShare;
+  }
+
+  final String predictionRecommendation = (prediction?['recommendation'] ?? '')
+      .toString()
+      .trim();
+  final String aiInsight = predictionRecommendation.isNotEmpty
+      ? predictionRecommendation
+      : _fallbackInsight(topName, topPercent, budgetDeltaPercent);
+
+  return HomeInsights(
+    bill: estimatedBill,
+    usage: estimatedMonthlyKwh,
+    budgetUsage: baselineMonthlyKwh,
+    dailyAverageKwh: dailyAverageKwh,
+    dailyAverageDelta: _formatPercentDelta(dailyDeltaPercent),
+    budgetDelta: _formatPercentDelta(budgetDeltaPercent),
+    topApplianceName: topName,
+    topApplianceKwh: topKwh,
+    topApplianceCost: topCost,
+    topAppliancePercent: topPercent,
+    aiInsight: aiInsight,
+  );
+}
+
+String _formatPercentDelta(double percent) {
+  if (percent.isNaN || percent.isInfinite) {
+    return '0%';
+  }
+  final String sign = percent >= 0 ? '+' : '';
+  return '$sign${percent.toStringAsFixed(0)}%';
+}
+
+String _fallbackInsight(
+  String topApplianceName,
+  double topShare,
+  double budgetDelta,
+) {
+  if (topShare <= 0 || topApplianceName == 'No appliance yet') {
+    return 'Add your appliances and run a prediction to get personalized savings recommendations.';
+  }
+
+  if (budgetDelta > 0) {
+    return '$topApplianceName is driving ${topShare.toStringAsFixed(0)}% of usage. Try trimming daily runtime or using eco settings to stay within budget.';
+  }
+
+  return '$topApplianceName accounts for ${topShare.toStringAsFixed(0)}% of usage. Keep this appliance optimized to maintain your current efficiency.';
 }

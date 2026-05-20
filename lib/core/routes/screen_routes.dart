@@ -7,6 +7,7 @@ class Routes {
   static const tipsscreen = '/tipsscreen';
   static const statscreen = '/statscreen';
   static const homescreen = '/homescreen';
+  static const notifications = '/notifications';
   static const predictBill = '/predict-bill';
   static const adjustscreen = '/adjustscreen';
   // static const billhistory = '/bill-history';
