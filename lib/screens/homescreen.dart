@@ -24,48 +24,63 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ScreenScaffold(
       background: AppColors.midnight,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _HomeHeader(),
-          const SizedBox(height: 22),
-          BillHeroCard(
-            bill: bill, 
-            usage: usage, 
-            budgetusage: budgetUsage
-          ),
-          const SizedBox(height: 16),
-          const Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double currentWidth = constraints.maxWidth;
+          // Dynamically handle spacing parameters for small vs normal screens
+          final double spacing = currentWidth < 360 ? 10.0 : 14.0;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: MetricCard(
-                  icon: Icons.trending_up_rounded,
-                  value: '22.7 kWh',
-                  label: 'Daily avg',
-                  delta: '-4%',
-                ),
+              const _HomeHeader(),
+              const SizedBox(height: 22),
+              BillHeroCard(
+                bill: bill, 
+                usage: usage, 
+                budgetusage: budgetUsage
               ),
-              SizedBox(width: 14),
-              Expanded(
-                child: MetricCard(
-                  icon: Icons.eco_outlined,
-                  value: '12.4 kg',
-                  label: 'CO₂ saved',
-                  delta: '+8%',
+              const SizedBox(height: 16),
+              
+              // Responsive Metric Grid Container Row
+              Row(
+                children: [
+                  Expanded(
+                    child: MetricCard(
+                      icon: Icons.trending_up_rounded,
+                      value: '22.7 kWh',
+                      label: 'Daily avg',
+                      delta: '-4%',
+                    ),
+                  ),
+                  SizedBox(width: spacing),
+                  Expanded(
+                    child: MetricCard(
+                      icon: Icons.eco_outlined,
+                      value: '12.4 kg',
+                      label: 'CO₂ saved',
+                      delta: '+8%',
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: spacing),
+              const ApplianceUsageCard(),
+              SizedBox(height: spacing),
+              const AiInsightCard(),
+              const SizedBox(height: 52),
+              
+              // Bottom Action Button Wrapper
+              SizedBox(
+                width: double.infinity,
+                child: PrimaryPillButton(
+                  label: 'Predict next bill  →',
+                  onPressed: onPredict,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 14),
-          const ApplianceUsageCard(),
-          const SizedBox(height: 14),
-          const AiInsightCard(),
-          const SizedBox(height: 52),
-          PrimaryPillButton(
-            label: 'Predict next bill  →',
-            onPressed: onPredict,
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -103,28 +118,37 @@ class _HomeHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Good evening',
-                style: TextStyle(
-                  color: Color(0xFFC9CEE1),
-                  fontSize: 16,
-                  fontFamily: 'Helvetica Neue',
-                  fontWeight: FontWeight.w500,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Good evening',
+                  style: TextStyle(
+                    color: Color(0xFFC9CEE1),
+                    fontSize: 16,
+                    fontFamily: 'Helvetica Neue',
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               SizedBox(height: 8),
-              Text(
-                'Julo',
-                style: TextStyle(
-                  color: Color(0xFFDDE1F0),
-                  fontSize: 19,
-                  fontFamily: 'Helvetica Neue',
-                  fontWeight: FontWeight.w800,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Julo',
+                  style: TextStyle(
+                    color: Color(0xFFDDE1F0),
+                    fontSize: 19,
+                    fontFamily: 'Helvetica Neue',
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(width: 12),
         Stack(
           clipBehavior: Clip.none,
           children: [
@@ -157,16 +181,16 @@ class _HomeHeader extends StatelessWidget {
 }
 
 class BillHeroCard extends StatelessWidget {
-  BillHeroCard({
+  const BillHeroCard({
     super.key,
     required this.bill,
     required this.usage,
     required this.budgetusage,
-    });
+  });
 
-    final double bill;
-    final double usage;
-    final double budgetusage;
+  final double bill;
+  final double usage;
+  final double budgetusage;
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +207,7 @@ class BillHeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Your bill for this month',
             style: TextStyle(
               color: Color(0xFF073A68),
@@ -195,9 +219,10 @@ class BillHeroCard extends StatelessWidget {
           const SizedBox(height: 26),
           FittedBox(
             fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
             child: RichText(
               text: TextSpan(
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.midnight,
                   fontSize: 56,
                   fontFamily: 'Helvetica Neue',
@@ -209,20 +234,23 @@ class BillHeroCard extends StatelessWidget {
                   TextSpan(text: '₱$billWhole'),
                   TextSpan(
                     text: ".$billDecimal",
-                    style: TextStyle(color: AppColors.blueDark),
+                    style: const TextStyle(color: AppColors.blueDark),
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            '${usage.toStringAsFixed(0)} kWh',
-            style: TextStyle(
-              color: Color(0xFF083D6D),
-              fontSize: 13,
-              fontFamily: 'Helvetica Neue',
-              fontWeight: FontWeight.w600,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${usage.toStringAsFixed(0)} kWh',
+              style: const TextStyle(
+                color: Color(0xFF083D6D),
+                fontSize: 13,
+                fontFamily: 'Helvetica Neue',
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(height: 22),
@@ -230,7 +258,7 @@ class BillHeroCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               minHeight: 10,
-              value: usage / budgetusage,
+              value: budgetusage > 0 ? (usage / budgetusage) : 0.0,
               color: AppColors.midnight,
               backgroundColor: AppColors.blueDark,
             ),
@@ -239,8 +267,14 @@ class BillHeroCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('0 kWh', style: TextStyle(color: Color(0xFF11517D), fontFamily: 'Helvetica Neue')),
-              Text('Budget: ${budgetusage.toStringAsFixed(0)} kWh'),
+              const Text('0 kWh', style: TextStyle(color: Color(0xFF11517D), fontFamily: 'Helvetica Neue')),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text('Budget: ${budgetusage.toStringAsFixed(0)} kWh'),
+                ),
+              ),
             ],
           ),
         ],
@@ -278,13 +312,19 @@ class MetricCard extends StatelessWidget {
               children: [
                 Icon(icon, color: AppColors.muted, size: 27),
                 const Spacer(),
-                Text(
-                  delta,
-                  style: const TextStyle(
-                    color: AppColors.blue,
-                    fontSize: 12,
-                    fontFamily: 'Helvetica Neue',
-                    fontWeight: FontWeight.w800,
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      delta,
+                      style: const TextStyle(
+                        color: AppColors.blue,
+                        fontSize: 12,
+                        fontFamily: 'Helvetica Neue',
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -292,6 +332,7 @@ class MetricCard extends StatelessWidget {
             const Spacer(),
             FittedBox(
               fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
               child: Text(
                 value,
                 style: const TextStyle(
@@ -303,13 +344,17 @@ class MetricCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontSize: 13,
-                fontFamily: 'Helvetica Neue',
-                fontWeight: FontWeight.w500,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 13,
+                  fontFamily: 'Helvetica Neue',
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
@@ -337,32 +382,48 @@ class ApplianceUsageCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Most Used Appliance',
-                  style: TextStyle(color: AppColors.muted, fontSize: 12, fontFamily: 'Helvetica Neue', fontWeight: FontWeight.w500),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Most Used Appliance',
+                    style: TextStyle(color: AppColors.muted, fontSize: 12, fontFamily: 'Helvetica Neue', fontWeight: FontWeight.w500),
+                  ),
                 ),
                 SizedBox(height: 8),
-                Text(
-                  'Air Conditioner',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, fontFamily: 'Helvetica Neue'),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Air Conditioner',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, fontFamily: 'Helvetica Neue'),
+                  ),
                 ),
                 SizedBox(height: 10),
-                Text(
-                  '175 kWh · ₱1,400 this month',
-                  style: TextStyle(color: AppColors.muted, fontSize: 12, fontFamily: 'Helvetica Neue'),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '175 kWh · ₱1,400 this month',
+                    style: TextStyle(color: AppColors.muted, fontSize: 12, fontFamily: 'Helvetica Neue'),
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 12),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                '64%',
-                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, fontFamily: 'Helvetica Neue'),
+              const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '64%',
+                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, fontFamily: 'Helvetica Neue'),
+                ),
               ),
-              Text('of usage', style: TextStyle(color: AppColors.muted, fontSize: 8, fontFamily: 'Helvetica Neue')),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('of usage', style: const TextStyle(color: AppColors.muted, fontSize: 8, fontFamily: 'Helvetica Neue')),
+              ),
             ],
           ),
         ],
@@ -385,7 +446,7 @@ class AiInsightCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconBubble(icon: Icons.smart_toy_outlined),
-          SizedBox(width: 16),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

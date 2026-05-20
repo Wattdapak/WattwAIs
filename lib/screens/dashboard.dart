@@ -5,7 +5,6 @@ import 'package:wattwais/models/wattwais_models.dart';
 import 'package:wattwais/widgets/bottom_nav.dart';
 
 // Screen Imports
-import 'profilescreen.dart';
 import 'tipsscreen.dart';
 import 'statscreen.dart';
 import 'homescreen.dart';
@@ -49,31 +48,50 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 260),
-        child: IndexedStack(
-          key: ValueKey(_tab),
-          index: _tab,
-          children: [
-            HomeScreen(
-              // Triggering the GoRouter navigation route instead of managing local overlay states
-              onPredict: () {
-                context.go(Routes.predictBill);
-              },
-              bill: _bill,
-              usage: _usage,
-              budgetUsage: _budgetUsage,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Adapt screen layouts if viewed on tablets or landscape screen configurations
+        final bool isWideLayout = constraints.maxWidth > 720;
+
+        return Scaffold(
+          // Uses an intentional, responsive container structure to constraint content blowing up on big screens
+          body: Center(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: isWideLayout ? 600 : double.infinity,
+              ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  );
+                },
+                child: IndexedStack(
+                  key: ValueKey(_tab),
+                  index: _tab,
+                  children: [
+                    HomeScreen(
+                      onPredict: () {
+                        context.go(Routes.predictBill);
+                      },
+                      bill: _bill,
+                      usage: _usage,
+                      budgetUsage: _budgetUsage,
+                    ),
+                    const StatsScreen(),
+                    const TipsScreen(), // Adding const if constructors support it
+                  ],
+                ),
+              ),
             ),
-            const StatsScreen(),
-            TipsScreen(),
-            ProfileScreen(),
-          ],
-        ),
-      ),
-      bottomNavigationBar: WattBottomNav(
-        currentIndex: 0,
-      ),
+          ),
+          bottomNavigationBar: WattBottomNav(
+            currentIndex: 0
+          ),
+        );
+      },
     );
   }
 }

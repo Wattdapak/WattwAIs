@@ -26,16 +26,14 @@ class ApplianceChip extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           width: 102,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
           decoration: BoxDecoration(
-            color: selected
-                ? const Color(0xFF102338)
+            color: selected 
+                ? const Color(0xFF102338) 
                 : const Color(0xFF10171D),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: selected
-                  ? AppColors.blue
-                  : AppColors.mutedBorder,
+              color: selected ? AppColors.blue : AppColors.mutedBorder,
               width: 1.4,
             ),
           ),
@@ -48,13 +46,16 @@ class ApplianceChip extends StatelessWidget {
                 size: 29,
               ),
               const SizedBox(height: 12),
-              Text(
-                appliance.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 13,
+              // Protects layout from overflow on extra narrow item states
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  appliance.name,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ],

@@ -1,14 +1,12 @@
 import "package:flutter/material.dart";
-
 import "package:wattwais/models/bill_entry.dart";
 import "package:wattwais/utils/bill_utils.dart";
 
-//card widget that displays a single month's bill entry.
-//input for bill amount and kWh usage.
+// Card widget that displays a single month's bill entry.
+// Safe for compact, ultra-narrow mobile viewports.
 class BillCard extends StatelessWidget {
-  const BillCard({ super.key, required this.entry});
+  const BillCard({super.key, required this.entry});
 
-  //billEntry model with controllers and monthId.
   final BillEntry entry;
 
   @override
@@ -16,62 +14,85 @@ class BillCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            //month header (e.g., "May 2026")
-            Text(
-              formatMonth(entry.monthId),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+            // Month header with a scaleDown safeguard
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                formatMonth(entry.monthId),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-
             const SizedBox(height: 16),
+            
+            // Dynamic Adaptive Grid Layout
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // If the context is narrower than a typical split view (e.g. 310px), 
+                // stack inputs vertically to protect typography integrity.
+                if (constraints.maxWidth < 310) {
+                  return Column(
+                    children: [
+                      _buildBillField(),
+                      const SizedBox(height: 14),
+                      _buildKwhField(),
+                    ],
+                  );
+                }
 
-            Row(
-              children: [
-                //bill amount input field
-                Expanded (
-                  child: TextFormField(
-                    controller: entry.billController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Bill Amount',
-                      hintText: '3250',
-                      prefixText: '₱ ',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Required';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-
-                const SizedBox(width: 16),
-
-                // kWh usage input field (optional)
-                Expanded(
-                  child: TextFormField(
-                    controller: entry.kwhController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'kWh Used (Optional)',
-                      hintText: '285',
-                      suffixText: 'kWh',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
-            )
+                // Otherwise, utilize a robust row setup
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _buildBillField()),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildKwhField()),
+                  ],
+                );
+              },
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildBillField() {
+    return TextFormField(
+      controller: entry.billController,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: const InputDecoration(
+        labelText: 'Bill Amount',
+        hintText: '3250',
+        prefixText: '₱ ',
+        border: OutlineInputBorder(),
+        isDense: true, // Reduces internal padding for micro-viewports
+        errorMaxLines: 1,
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Required';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildKwhField() {
+    return TextFormField(
+      controller: entry.kwhController,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: const InputDecoration(
+        labelText: 'kWh Used', // Shortened label string to protect layout line height
+        hintText: '285',
+        suffixText: 'kWh',
+        border: OutlineInputBorder(),
+        isDense: true,
       ),
     );
   }

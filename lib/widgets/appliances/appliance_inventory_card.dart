@@ -23,7 +23,9 @@ class ApplianceInventoryCard extends StatelessWidget {
     return WattCard(
       padding: const EdgeInsets.all(20),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Top row: Icon, Name, and Delete button
           Row(
             children: [
               IconBubble(
@@ -33,8 +35,7 @@ class ApplianceInventoryCard extends StatelessWidget {
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       appliance.name,
@@ -57,8 +58,7 @@ class ApplianceInventoryCard extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip:
-                    'Remove ${appliance.name}',
+                tooltip: 'Remove ${appliance.name}',
                 onPressed: onDelete,
                 icon: const Icon(
                   Icons.delete_outline_rounded,
@@ -68,44 +68,64 @@ class ApplianceInventoryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: QuantityStepper(
-                  value: appliance.quantity,
-                  onChanged: (value) {
-                    onChanged(
-                      appliance.copyWith(
-                        quantity: value,
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ValuePill(
-                  label: 'Watts',
-                  value: '${appliance.watts}',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ValuePill(
-                  label: 'Hrs/day',
-                  value:
-                      '${appliance.hoursPerDay}',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ValuePill(
-                  label: 'days/wk',
-                  value:
-                      '${appliance.daysPerWeek}',
-                ),
-              ),
-            ],
+          
+          // Bottom section: Adaptable input elements
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const double spacing = 12.0;
+              final double maxWidth = constraints.maxWidth;
+
+              // Threshold to switch layout: if 4 items + spacing don't fit well, switch to 2x2 grid
+              // Adjust 360 based on your design's minimum comfortable width per item
+              final bool useGrid = maxWidth < 360; 
+              
+              // Dynamic width calculation
+              final double itemWidth = useGrid
+                  ? (maxWidth - spacing) / 2       // 2 items per row
+                  : (maxWidth - (spacing * 3)) / 4; // 4 items per row
+
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                alignment: WrapAlignment.start,
+                children: [
+                  SizedBox(
+                    width: itemWidth,
+                    child: QuantityStepper(
+                      value: appliance.quantity,
+                      onChanged: (value) {
+                        onChanged(
+                          appliance.copyWith(
+                            quantity: value,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: ValuePill(
+                      label: 'Watts',
+                      value: '${appliance.watts}',
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: ValuePill(
+                      label: 'Hrs/day',
+                      value: '${appliance.hoursPerDay}',
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: ValuePill(
+                      label: 'days/wk',
+                      value: '${appliance.daysPerWeek}',
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

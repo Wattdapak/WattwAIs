@@ -37,8 +37,8 @@ class _NavItem extends StatelessWidget {
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                width: 50,
-                height: 50,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   color: selected
                       ? const Color(0xFF0C4C76)
@@ -85,7 +85,7 @@ class WattBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 130,
+      height: 110,
       decoration: const BoxDecoration(
         color: AppColors.ink,
         border: Border(

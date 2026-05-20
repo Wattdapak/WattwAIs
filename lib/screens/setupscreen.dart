@@ -60,6 +60,7 @@ class _SetupScreenState extends State<SetupScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Adaptable Header Row Profile
                 Row(
                   children: [
                     IconButton.filled(
@@ -71,20 +72,29 @@ class _SetupScreenState extends State<SetupScreen> {
                       icon: const Icon(Icons.arrow_back_rounded, size: 28),
                     ),
                     const Expanded(
-                      child: Text(
-                        'Setup',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text(
+                            'Setup',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 64),
+                    const SizedBox(width: 54), // Dynamically balanced with back button width profile
                   ],
                 ),
                 const SizedBox(height: 22),
-                Text('Tell us about your home', style: context.titleLarge),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('Tell us about your home', style: context.titleLarge),
+                ),
                 const SizedBox(height: 12),
                 const Text(
                   "We'll predict your next bill with AI.",
@@ -137,7 +147,7 @@ class _SetupScreenState extends State<SetupScreen> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 112),
+                const SizedBox(height: 112), // Prevents fab overlap during long list views
               ],
             ),
           ),
@@ -149,10 +159,13 @@ class _SetupScreenState extends State<SetupScreen> {
               duration: const Duration(milliseconds: 220),
               child: widget.isPredicting
                   ? const _PredictingBar()
-                  : PrimaryPillButton(
-                      label: 'Predict my bill',
-                      icon: Icons.auto_fix_high_rounded,
-                      onPressed: _handlePredict,
+                  : SizedBox(
+                      width: double.infinity,
+                      child: PrimaryPillButton(
+                        label: 'Predict my bill',
+                        icon: Icons.auto_fix_high_rounded,
+                        onPressed: _handlePredict,
+                      ),
                     ),
             ),
           ),
@@ -173,26 +186,51 @@ class _SetupInputs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _FormInput(
-            label: 'LAST BILL (₱)',
-            hint: '2400',
-            prefix: '₱ ',
-            controller: billController,
-          ),
-        ),
-        const SizedBox(width: 18),
-        Expanded(
-          child: _FormInput(
-            label: 'RATE / KWH',
-            hint: '8.00',
-            prefix: '₱ ',
-            controller: rateController,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Falls back to stacking vertical forms on extremely compressed micro viewports
+        if (constraints.maxWidth < 280) {
+          return Column(
+            children: [
+              _FormInput(
+                label: 'LAST BILL (₱)',
+                hint: '2400',
+                prefix: '₱ ',
+                controller: billController,
+              ),
+              const SizedBox(height: 14),
+              _FormInput(
+                label: 'RATE / KWH',
+                hint: '8.00',
+                prefix: '₱ ',
+                controller: rateController,
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(
+              child: _FormInput(
+                label: 'LAST BILL (₱)',
+                hint: '2400',
+                prefix: '₱ ',
+                controller: billController,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: _FormInput(
+                label: 'RATE / KWH',
+                hint: '8.00',
+                prefix: '₱ ',
+                controller: rateController,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -220,7 +258,10 @@ class _FormInput extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: context.sectionLabel.copyWith(fontSize: 13)),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(label, style: context.sectionLabel.copyWith(fontSize: 13)),
+        ),
         const SizedBox(height: 14),
         TextField(
           controller: controller,
@@ -239,7 +280,7 @@ class _FormInput extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 18,
+              horizontal: 14,
               vertical: 18,
             ),
             filled: true,
@@ -335,19 +376,27 @@ class ApplianceInventoryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      appliance.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        appliance.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      '${appliance.watts}W · ${appliance.hoursPerDay}h/day · ×${appliance.quantity}',
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 13,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${appliance.watts}W · ${appliance.hoursPerDay}h/day · ×${appliance.quantity}',
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -364,27 +413,56 @@ class ApplianceInventoryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _QuantityStepper(
-                  value: appliance.quantity,
-                  onChanged: (value) =>
-                      onChanged(appliance.copyWith(quantity: value)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ValuePill(label: 'Watts', value: '${appliance.watts}'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ValuePill(
-                  label: 'Hrs/day',
-                  value: '${appliance.hoursPerDay}',
-                ),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final double cellWidth = constraints.maxWidth;
+              // Wraps adjustment buttons down dynamically on ultra-thin layouts
+              if (cellWidth < 260) {
+                return Column(
+                  children: [
+                    _QuantityStepper(
+                      value: appliance.quantity,
+                      onChanged: (value) =>
+                          onChanged(appliance.copyWith(quantity: value)),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: _ValuePill(label: 'Watts', value: '${appliance.watts}')),
+                        const SizedBox(width: 10),
+                        Expanded(child: _ValuePill(label: 'Hrs/day', value: '${appliance.hoursPerDay}')),
+                      ],
+                    )
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(
+                    flex: 13,
+                    child: _QuantityStepper(
+                      value: appliance.quantity,
+                      onChanged: (value) =>
+                          onChanged(appliance.copyWith(quantity: value)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 10,
+                    child: _ValuePill(label: 'Watts', value: '${appliance.watts}'),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 10,
+                    child: _ValuePill(
+                      label: 'Hrs/day',
+                      value: '${appliance.hoursPerDay}',
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -416,16 +494,19 @@ class _QuantityStepper extends StatelessWidget {
           ),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
                 'Qty',
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
+                style: TextStyle(color: AppColors.muted, fontSize: 11, height: 1.0),
               ),
+              const SizedBox(height: 2),
               Text(
                 '$value',
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
+                  height: 1.1,
                 ),
               ),
             ],
@@ -459,12 +540,12 @@ class _RoundIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkResponse(
       onTap: onTap,
-      radius: 24,
+      radius: 20,
       child: Container(
-        width: 34,
-        height: 34,
+        width: 32,
+        height: 32,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        child: Icon(icon, color: foreground, size: 22),
+        child: Icon(icon, color: foreground, size: 20),
       ),
     );
   }
@@ -481,6 +562,7 @@ class _ValuePill extends StatelessWidget {
     return Container(
       height: 56,
       alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: AppColors.ink,
         borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
@@ -488,14 +570,22 @@ class _ValuePill extends StatelessWidget {
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+            ),
           ),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
           ),
         ],
       ),
@@ -512,7 +602,7 @@ class EmptyInventoryCard extends StatelessWidget {
       child: Row(
         children: [
           IconBubble(icon: Icons.add_home_work_outlined),
-          SizedBox(width: 16),
+          const SizedBox(width: 16),
           Expanded(
             child: Text(
               'Choose appliances above to build an accurate home profile.',

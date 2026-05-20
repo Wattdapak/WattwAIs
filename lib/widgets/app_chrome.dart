@@ -50,7 +50,10 @@ class IconBubble extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(color: background, shape: BoxShape.circle),
-      child: Icon(icon, color: foreground, size: size * .48),
+      // Wrapped in Center to avoid asymmetric rendering artifacts on scaled viewports
+      child: Center(
+        child: Icon(icon, color: foreground, size: size * .48),
+      ),
     );
   }
 }
@@ -90,6 +93,7 @@ class _PrimaryPillButtonState extends State<PrimaryPillButton> {
           child: Container(
             width: double.infinity,
             height: 62,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: AppColors.blue,
               borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
@@ -109,15 +113,17 @@ class _PrimaryPillButtonState extends State<PrimaryPillButton> {
                   const SizedBox(width: 10),
                 ],
                 Flexible(
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.ink,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      widget.label,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0,
+                      ),
                     ),
                   ),
                 ),
@@ -168,14 +174,23 @@ class _SkeletonLineState extends State<SkeletonLine>
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
-      opacity: Tween(begin: .35, end: .72).animate(_controller),
-      child: Container(
-        width: widget.width,
-        height: widget.height,
-        decoration: BoxDecoration(
-          color: AppColors.muted.withValues(alpha: .18),
-          borderRadius: BorderRadius.circular(widget.radius),
-        ),
+      opacity: Tween<double>(begin: .35, end: .72).animate(_controller),
+      // Wrapped in a LayoutBuilder to clamp widths safely against parent component containers
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final computedWidth = widget.width == double.infinity 
+              ? constraints.maxWidth 
+              : widget.width.clamp(0.0, constraints.maxWidth);
+              
+          return Container(
+            width: computedWidth,
+            height: widget.height,
+            decoration: BoxDecoration(
+              color: AppColors.muted.withValues(alpha: .18),
+              borderRadius: BorderRadius.circular(widget.radius),
+            ),
+          );
+        },
       ),
     );
   }
