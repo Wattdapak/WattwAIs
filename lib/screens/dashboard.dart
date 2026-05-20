@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wattwais/core/routes/screen_routes.dart';
+import 'package:wattwais/services/ai_insights_service.dart';
 import 'package:wattwais/services/prediction_store_service.dart';
 import 'package:wattwais/widgets/bottom_nav.dart';
 
@@ -22,7 +23,10 @@ class _DashboardState extends State<Dashboard> {
   final _tab = 0;
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
+  final _aiInsightsService = const AiInsightsService();
   String _name = 'Put Name Here';
+  String _insightsKey = '';
+  Future<Map<String, dynamic>?>? _insightsFuture;
 
   @override
   void initState() {
@@ -119,52 +123,83 @@ class _DashboardState extends State<Dashboard> {
             final baseline =
                 (prediction?['historical_monthly_kwh'] as num?)?.toDouble() ??
                 1.0;
+            final currentKey = _insightCacheKey(latest);
+            if (currentKey != _insightsKey) {
+              _insightsKey = currentKey;
+              _insightsFuture = _aiInsightsService.generateInsights(
+                name: _name,
+                latestPrediction: latest,
+              );
+            }
 
-            return Scaffold(
-              body: Center(
-                child: Container(
-                  constraints: BoxConstraints(
-                    maxWidth: isWideLayout ? 600 : double.infinity,
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 260),
-                    transitionBuilder:
-                        (Widget child, Animation<double> animation) {
-                          return FadeTransition(
-                            opacity: animation,
-                            child: child,
-                          );
-                        },
-                    child: IndexedStack(
-                      key: ValueKey(_tab),
-                      index: _tab,
-                      children: [
-                        HomeScreen(
-                          onPredict: () {
-                            context.go(Routes.predictBill);
-                          },
-                          onTapNotifications: () {
-                            context.push(Routes.notifications);
-                          },
-                          bill: bill,
-                          usage: usage,
-                          budgetUsage: baseline,
-                          latestPrediction: latest,
-                          name: _name,
-                          onEditName: _editName,
+            return FutureBuilder<Map<String, dynamic>?>(
+              future: _insightsFuture,
+              builder: (context, insightsSnapshot) {
+                final aiInsights = insightsSnapshot.data;
+
+                return Scaffold(
+                  body: Center(
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: isWideLayout ? 600 : double.infinity,
+                      ),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 260),
+                        transitionBuilder:
+                            (Widget child, Animation<double> animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              );
+                            },
+                        child: IndexedStack(
+                          key: ValueKey(_tab),
+                          index: _tab,
+                          children: [
+                            HomeScreen(
+                              onPredict: () {
+                                context.go(Routes.predictBill);
+                              },
+                              onTapNotifications: () {
+                                context.push(Routes.notifications);
+                              },
+                              bill: bill,
+                              usage: usage,
+                              budgetUsage: baseline,
+                              latestPrediction: latest,
+                              aiInsights: aiInsights,
+                              name: _name,
+                              onEditName: _editName,
+                            ),
+                            StatsScreen(
+                              latestPrediction: latest,
+                              aiInsights: aiInsights,
+                            ),
+                            TipsScreen(
+                              latestPrediction: latest,
+                              aiInsights: aiInsights,
+                            ),
+                          ],
                         ),
-                        StatsScreen(latestPrediction: latest),
-                        TipsScreen(latestPrediction: latest),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ),
-              bottomNavigationBar: const WattBottomNav(currentIndex: 0),
+                  bottomNavigationBar: const WattBottomNav(currentIndex: 0),
+                );
+              },
             );
           },
         );
       },
     );
+  }
+
+  String _insightCacheKey(Map<String, dynamic>? latest) {
+    if (latest == null) return 'none';
+    final prediction = latest['prediction_result'] as Map<String, dynamic>?;
+    final bill = prediction?['estimated_bill'];
+    final kwh = prediction?['estimated_monthly_kwh'];
+    final timestamp = latest['created_at']?.toString() ?? '';
+    return '$timestamp|$bill|$kwh|$_name';
   }
 }

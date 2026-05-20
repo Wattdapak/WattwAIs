@@ -3,16 +3,23 @@ from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pydantic import Field
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 import pandas as pd
 import numpy as np
 import joblib
 from datetime import datetime
 import hashlib
 import os
+import json
+import time
+import threading
+from urllib import request as urllib_request
+from urllib import error as urllib_error
 from pathlib import Path
 
 app = FastAPI(title="wattwais prediction api")
+_ai_insights_cache: Dict[str, Dict[str, Any]] = {}
+_ai_insights_cache_lock = threading.Lock()
 
 def _get_allowed_origins():
     env = os.getenv("ENV", "development").lower()
@@ -73,6 +80,28 @@ class PredictionRequest(BaseModel):
     six_month_total_bill: float = Field(ge=0.0)
     six_month_total_kwh: float = Field(ge=0.0)
     monthly_budget: Optional[float] = Field(default=None, ge=0.0, le=1e9)
+
+
+class InsightApplianceInput(BaseModel):
+    name: str = Field(default="Appliance", min_length=1, max_length=80)
+    quantity: int = Field(default=1, ge=1, le=1000)
+    watts: float = Field(default=0.0, ge=0.0, le=100000.0)
+    hours_per_day: float = Field(default=0.0, ge=0.0, le=24.0)
+    days_per_week: int = Field(default=7, ge=0, le=7)
+
+
+class InsightRequest(BaseModel):
+    name: str = Field(default="User", min_length=1, max_length=80)
+    budget_kwh: Optional[float] = Field(default=None, ge=0.0, le=1e9)
+    estimated_monthly_kwh: float = Field(ge=0.0, le=1e9)
+    historical_monthly_kwh: float = Field(ge=0.0, le=1e9)
+    estimated_bill: float = Field(ge=0.0, le=1e12)
+    exceeds_budget: Optional[bool] = None
+    top_appliance_name: Optional[str] = Field(default=None, max_length=80)
+    top_appliance_percent: Optional[float] = Field(default=None, ge=0.0, le=1000.0)
+    top_appliance_kwh: Optional[float] = Field(default=None, ge=0.0, le=1e9)
+    top_appliance_cost: Optional[float] = Field(default=None, ge=0.0, le=1e12)
+    appliances: List[InsightApplianceInput] = Field(default_factory=list)
 
 
 @app.get("/")
@@ -167,6 +196,203 @@ def build_model_features(avg_hourly_kwh: float):
     return features
 
 
+def _insights_models() -> List[str]:
+    models = [
+        os.getenv("GEMINI_RECO_MAIN_MODEL", "gemini-3.5-flash"),
+        os.getenv("GEMINI_RECO_BACKUP_MODEL_1", "gemini-3"),
+        os.getenv("GEMINI_RECO_BACKUP_MODEL_2", "gemini-3.1-flash-lite"),
+        os.getenv("GEMINI_RECO_BACKUP_MODEL_3", "gemini-2.5-flash-lite"),
+    ]
+    return [m.strip() for m in models if m and m.strip()]
+
+
+def _insights_cache_ttl_seconds() -> int:
+    raw = os.getenv("GEMINI_RECO_CACHE_TTL_SECONDS", "900").strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        return 900
+    return max(0, value)
+
+
+def _insights_cache_key(payload: InsightRequest) -> str:
+    canonical = json.dumps(payload.model_dump(), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _get_cached_insights(cache_key: str) -> Optional[Dict[str, Any]]:
+    ttl = _insights_cache_ttl_seconds()
+    if ttl <= 0:
+        return None
+    now = time.time()
+    with _ai_insights_cache_lock:
+        entry = _ai_insights_cache.get(cache_key)
+        if not entry:
+            return None
+        expires_at = float(entry.get("expires_at", 0))
+        if expires_at <= now:
+            _ai_insights_cache.pop(cache_key, None)
+            return None
+        data = entry.get("data")
+        if not isinstance(data, dict):
+            return None
+        return data
+
+
+def _set_cached_insights(cache_key: str, data: Dict[str, Any]) -> None:
+    ttl = _insights_cache_ttl_seconds()
+    if ttl <= 0:
+        return
+    expires_at = time.time() + ttl
+    with _ai_insights_cache_lock:
+        _ai_insights_cache[cache_key] = {
+            "data": data,
+            "expires_at": expires_at,
+        }
+
+
+def _gemini_generate_json(prompt: str) -> Dict[str, Any]:
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY is not configured")
+
+    temperature = float(os.getenv("GEMINI_RECO_TEMPERATURE", "0.3"))
+    max_tokens = int(os.getenv("GEMINI_RECO_MAX_OUTPUT_TOKENS", "600"))
+    models = _insights_models()
+    if not models:
+        raise HTTPException(status_code=503, detail="No Gemini models configured")
+
+    generation_config = {
+        "temperature": temperature,
+        "maxOutputTokens": max_tokens,
+        "responseMimeType": "application/json",
+    }
+
+    request_payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": generation_config,
+    }
+
+    errors: List[str] = []
+
+    for model_name in models:
+        endpoint = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model_name}:generateContent?key={api_key}"
+        )
+        body_bytes = json.dumps(request_payload).encode("utf-8")
+        req = urllib_request.Request(
+            endpoint,
+            data=body_bytes,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+
+        try:
+            with urllib_request.urlopen(req, timeout=20) as response:
+                raw = response.read().decode("utf-8")
+                parsed = json.loads(raw)
+                parts = (
+                    parsed.get("candidates", [{}])[0]
+                    .get("content", {})
+                    .get("parts", [])
+                )
+                text = ""
+                if parts:
+                    text = parts[0].get("text", "")
+                if not text:
+                    raise ValueError("Empty Gemini response text")
+                data = json.loads(text)
+                data["_meta"] = {"model": model_name}
+                return data
+
+        except urllib_error.HTTPError as e:
+            detail = e.read().decode("utf-8", errors="ignore")
+            errors.append(f"{model_name}: http {e.code} {detail[:220]}")
+            if e.code == 429:
+                time.sleep(0.5)
+            continue
+        except Exception as e:
+            errors.append(f"{model_name}: {str(e)[:220]}")
+            continue
+
+    raise HTTPException(
+        status_code=503,
+        detail=f"All Gemini models failed. {' | '.join(errors)}",
+    )
+
+
+def _build_insights_prompt(payload: InsightRequest) -> str:
+    appliances_json = json.dumps(
+        [a.model_dump() for a in payload.appliances],
+        ensure_ascii=True,
+    )
+    return f"""
+You are an electricity optimization assistant for a household energy app.
+Use the provided prediction and appliance data to generate page-specific insights.
+
+Return STRICT JSON only (no markdown, no extra text).
+Do not invent missing data.
+Recommendations must be practical, specific, and short.
+
+Output schema:
+{{
+  "home_insight": {{
+    "headline": "string",
+    "message": "string",
+    "priority": "low|medium|high"
+  }},
+  "stats_insight": {{
+    "headline": "string",
+    "message": "string",
+    "key_driver": "string"
+  }},
+  "tips_list": [
+    {{
+      "title": "string",
+      "recommendation": "string",
+      "estimated_impact": "string",
+      "difficulty": "easy|medium|hard"
+    }}
+  ],
+  "alerts": [
+    {{
+      "type": "budget|usage_spike|appliance_risk",
+      "message": "string"
+    }}
+  ]
+}}
+
+Generate cross-page electricity insights from this data.
+
+User:
+- Name: {payload.name}
+- Budget kWh: {payload.budget_kwh}
+
+Prediction:
+- Estimated monthly kWh: {payload.estimated_monthly_kwh}
+- Historical monthly kWh: {payload.historical_monthly_kwh}
+- Estimated bill PHP: {payload.estimated_bill}
+- Exceeds budget: {payload.exceeds_budget}
+
+Appliance summary:
+- Top appliance: {payload.top_appliance_name}
+- Top appliance share: {payload.top_appliance_percent}%
+- Top appliance monthly kWh: {payload.top_appliance_kwh}
+- Top appliance monthly cost PHP: {payload.top_appliance_cost}
+
+Appliances:
+{appliances_json}
+
+Rules:
+- home_insight: 1 short message for dashboard card.
+- stats_insight: explain trend and main driver.
+- tips_list: 4 to 6 actionable tips, prioritized by impact.
+- include at least one no-cost tip.
+- keep each recommendation <= 2 sentences.
+""".strip()
+
+
 @app.post("/predict")
 def predict_bill(request: PredictionRequest):
     if model is None:
@@ -236,3 +462,48 @@ def predict_bill(request: PredictionRequest):
         "appliance_breakdown": appliance_breakdown,
         "recommendation": "ai recommendation endpoint can use this prediction result plus appliance breakdown."
     }
+
+
+@app.post("/ai/insights")
+def generate_ai_insights(request: InsightRequest):
+    cache_key = _insights_cache_key(request)
+    cached = _get_cached_insights(cache_key)
+    if cached is not None:
+        cached_response = dict(cached)
+        meta = cached_response.get("meta")
+        if isinstance(meta, dict):
+            meta = dict(meta)
+            meta["cache_hit"] = True
+            cached_response["meta"] = meta
+        else:
+            cached_response["meta"] = {"cache_hit": True}
+        return cached_response
+
+    prompt = _build_insights_prompt(request)
+    result = _gemini_generate_json(prompt)
+
+    home = result.get("home_insight") or {}
+    stats = result.get("stats_insight") or {}
+    tips = result.get("tips_list") or []
+    alerts = result.get("alerts") or []
+
+    response = {
+        "home_insight": {
+            "headline": str(home.get("headline", "Energy insight")),
+            "message": str(home.get("message", "No insight available yet.")),
+            "priority": str(home.get("priority", "medium")),
+        },
+        "stats_insight": {
+            "headline": str(stats.get("headline", "Usage trend")),
+            "message": str(stats.get("message", "No trend insight available yet.")),
+            "key_driver": str(stats.get("key_driver", "Latest prediction")),
+        },
+        "tips_list": tips if isinstance(tips, list) else [],
+        "alerts": alerts if isinstance(alerts, list) else [],
+        "meta": {
+            **(result.get("_meta", {}) if isinstance(result.get("_meta"), dict) else {}),
+            "cache_hit": False,
+        },
+    }
+    _set_cached_insights(cache_key, response)
+    return response

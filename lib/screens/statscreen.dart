@@ -9,9 +9,10 @@ import '../widgets/screenscaffold.dart';
 import 'package:wattwais/widgets/bottom_nav.dart';
 
 class StatsScreen extends StatelessWidget {
-  const StatsScreen({super.key, this.latestPrediction});
+  const StatsScreen({super.key, this.latestPrediction, this.aiInsights});
 
   final Map<String, dynamic>? latestPrediction;
+  final Map<String, dynamic>? aiInsights;
 
   List<UsageMonth> _buildUsageHistory(Map<String, dynamic>? record) {
     final bills = record?['bills'];
@@ -50,6 +51,10 @@ class StatsScreen extends StatelessWidget {
     final estimatedBill = (prediction?['estimated_bill'] as num?)?.toDouble() ?? 0.0;
     final estimatedKwh = (prediction?['estimated_monthly_kwh'] as num?)?.toDouble() ?? 0.0;
     final chartData = _buildUsageHistory(record);
+    final statsInsight = aiInsights?['stats_insight'] as Map<String, dynamic>?;
+    final statsHeadline = (statsInsight?['headline'] ?? 'Usage trend').toString();
+    final statsMessage = (statsInsight?['message'] ?? 'Run a prediction to generate trend insights.').toString();
+    final statsDriver = (statsInsight?['key_driver'] ?? 'Latest prediction').toString();
 
     return Scaffold(
       body: ScreenScaffold(
@@ -91,6 +96,52 @@ class StatsScreen extends StatelessWidget {
                     Expanded(child: MonthlyChart(data: chartData)),
                   ],
                 ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            WattCard(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const IconBubble(icon: Icons.insights_rounded),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            statsHeadline,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          statsMessage,
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 14,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Key driver: $statsDriver',
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 18),

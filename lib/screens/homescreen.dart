@@ -11,6 +11,7 @@ class HomeScreen extends StatelessWidget {
     required this.usage,
     required this.budgetUsage,
     required this.latestPrediction,
+    required this.aiInsights,
     required this.name,
     required this.onEditName,
     required this.onTapNotifications,
@@ -21,6 +22,7 @@ class HomeScreen extends StatelessWidget {
   final double usage;
   final double budgetUsage;
   final Map<String, dynamic>? latestPrediction;
+  final Map<String, dynamic>? aiInsights;
   final String name;
   final VoidCallback onEditName;
   final VoidCallback onTapNotifications;
@@ -29,6 +31,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final insights = _buildHomeInsights(
       latestPrediction: latestPrediction,
+      aiInsights: aiInsights,
       fallbackBill: bill,
       fallbackUsage: usage,
       fallbackBudgetUsage: budgetUsage,
@@ -576,6 +579,7 @@ class HomeInsights {
 
 HomeInsights _buildHomeInsights({
   required Map<String, dynamic>? latestPrediction,
+  required Map<String, dynamic>? aiInsights,
   required double fallbackBill,
   required double fallbackUsage,
   required double fallbackBudgetUsage,
@@ -637,10 +641,16 @@ HomeInsights _buildHomeInsights({
     topPercent = boundedShare;
   }
 
+  final String homeInsightFromApi =
+      ((aiInsights?['home_insight'] as Map?)?['message'] ?? '')
+          .toString()
+          .trim();
   final String predictionRecommendation = (prediction?['recommendation'] ?? '')
       .toString()
       .trim();
-  final String aiInsight = predictionRecommendation.isNotEmpty
+  final String aiInsight = homeInsightFromApi.isNotEmpty
+      ? homeInsightFromApi
+      : predictionRecommendation.isNotEmpty
       ? predictionRecommendation
       : _fallbackInsight(topName, topPercent, budgetDeltaPercent);
 

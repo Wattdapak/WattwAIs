@@ -6,9 +6,10 @@ import 'package:wattwais/widgets/bottom_nav.dart';
 import '../widgets/screenscaffold.dart';
 
 class TipsScreen extends StatelessWidget {
-  const TipsScreen({super.key, this.latestPrediction});
+  const TipsScreen({super.key, this.latestPrediction, this.aiInsights});
 
   final Map<String, dynamic>? latestPrediction;
+  final Map<String, dynamic>? aiInsights;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +37,8 @@ class TipsScreen extends StatelessWidget {
       appliances: appliances,
       exceedsBudget: exceedsBudget == true,
     );
+    final aiTips = _buildAiTips(aiInsights?['tips_list'] as List?);
+    final tipsToRender = aiTips.isNotEmpty ? aiTips : applianceTips;
 
     return Scaffold(
       backgroundColor: AppColors.ink,
@@ -94,7 +97,7 @@ class TipsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            if (applianceTips.isEmpty)
+            if (tipsToRender.isEmpty)
               const WattCard(
                 padding: EdgeInsets.all(20),
                 child: Row(
@@ -132,7 +135,7 @@ class TipsScreen extends StatelessWidget {
                 ),
               )
             else
-              for (final tip in applianceTips) ...[
+              for (final tip in tipsToRender) ...[
                 _TipCard(icon: tip.icon, title: tip.title, body: tip.body),
                 const SizedBox(height: 14),
               ],
@@ -142,6 +145,31 @@ class TipsScreen extends StatelessWidget {
       bottomNavigationBar: const WattBottomNav(currentIndex: 2),
     );
   }
+}
+
+List<_TipDefinition> _buildAiTips(List? tips) {
+  if (tips == null || tips.isEmpty) return const [];
+  final parsed = <_TipDefinition>[];
+
+  for (final entry in tips) {
+    final map = entry is Map ? entry : null;
+    if (map == null) continue;
+    final title = (map['title'] ?? '').toString().trim();
+    final recommendation = (map['recommendation'] ?? '').toString().trim();
+    final impact = (map['estimated_impact'] ?? '').toString().trim();
+    if (title.isEmpty || recommendation.isEmpty) continue;
+
+    final body = impact.isEmpty ? recommendation : '$recommendation\nImpact: $impact';
+    parsed.add(
+      _TipDefinition(
+        icon: Icons.auto_awesome_rounded,
+        title: title,
+        body: body,
+      ),
+    );
+  }
+
+  return parsed;
 }
 
 class _TipDefinition {
