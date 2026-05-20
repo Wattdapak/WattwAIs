@@ -20,6 +20,8 @@ from pathlib import Path
 app = FastAPI(title="wattwais prediction api")
 _ai_insights_cache: Dict[str, Dict[str, Any]] = {}
 _ai_insights_cache_lock = threading.Lock()
+_model_list_cache: Dict[str, Any] = {"expires_at": 0.0, "names": []}
+_model_list_cache_lock = threading.Lock()
 
 def _get_allowed_origins():
     env = os.getenv("ENV", "development").lower()
@@ -203,7 +205,53 @@ def _insights_models() -> List[str]:
         os.getenv("GEMINI_RECO_BACKUP_MODEL_2", "gemini-3.1-flash-lite"),
         os.getenv("GEMINI_RECO_BACKUP_MODEL_3", "gemini-2.5-flash-lite"),
     ]
-    return [m.strip() for m in models if m and m.strip()]
+    configured = [m.strip() for m in models if m and m.strip()]
+    available = _list_generate_content_models()
+    if not available:
+        return configured
+    available_set = set(available)
+    filtered = [m for m in configured if m in available_set]
+    return filtered if filtered else configured
+
+
+def _list_generate_content_models() -> List[str]:
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return []
+
+    now = time.time()
+    with _model_list_cache_lock:
+        expires_at = float(_model_list_cache.get("expires_at", 0))
+        names = _model_list_cache.get("names", [])
+        if expires_at > now and isinstance(names, list):
+            return [str(n) for n in names]
+
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+    req = urllib_request.Request(endpoint, method="GET")
+    try:
+        with urllib_request.urlopen(req, timeout=15) as response:
+            raw = response.read().decode("utf-8")
+            parsed = json.loads(raw)
+    except Exception:
+        return []
+
+    out: List[str] = []
+    for model in parsed.get("models", []):
+        if not isinstance(model, dict):
+            continue
+        methods = model.get("supportedGenerationMethods", [])
+        if "generateContent" not in methods:
+            continue
+        name = str(model.get("name", ""))
+        if name.startswith("models/"):
+            name = name.split("/", 1)[1]
+        if name:
+            out.append(name)
+
+    with _model_list_cache_lock:
+        _model_list_cache["names"] = out
+        _model_list_cache["expires_at"] = time.time() + 600
+    return out
 
 
 def _insights_cache_ttl_seconds() -> int:
@@ -507,3 +555,20 @@ def generate_ai_insights(request: InsightRequest):
     }
     _set_cached_insights(cache_key, response)
     return response
+
+
+@app.get("/ai/models/debug")
+def ai_models_debug():
+    configured = [
+        os.getenv("GEMINI_RECO_MAIN_MODEL", "gemini-3.5-flash"),
+        os.getenv("GEMINI_RECO_BACKUP_MODEL_1", "gemini-3"),
+        os.getenv("GEMINI_RECO_BACKUP_MODEL_2", "gemini-3.1-flash-lite"),
+        os.getenv("GEMINI_RECO_BACKUP_MODEL_3", "gemini-2.5-flash-lite"),
+    ]
+    available = _list_generate_content_models()
+    selected = _insights_models()
+    return {
+        "configured": configured,
+        "available_generate_content_models": available,
+        "selected_for_fallback": selected,
+    }
