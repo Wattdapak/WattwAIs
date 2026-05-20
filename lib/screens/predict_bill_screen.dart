@@ -43,11 +43,13 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
 
   PredictionResult? _latestPrediction;
   bool _isPredicting = false;
+  bool? _backendHealthy;
 
   @override
   void initState() {
     super.initState();
     _initialize();
+    _checkBackendHealth();
   }
 
   Future<void> _initialize() async {
@@ -67,6 +69,14 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
     }
 
     setState(() {});
+  }
+
+  Future<void> _checkBackendHealth() async {
+    final healthy = await const PredictionApiService().checkBackendHealth();
+    if (!mounted) return;
+    setState(() {
+      _backendHealthy = healthy;
+    });
   }
 
   Future<void> _showAddApplianceDialog() async {
@@ -498,6 +508,18 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (_backendHealthy == false) ...[
+                Card(
+                  color: Colors.amber.shade100,
+                  child: const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text(
+                      'Backend unreachable. Check your internet connection and API base URL.',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               const Text(
                 'Prediction Target',
                 style: TextStyle(

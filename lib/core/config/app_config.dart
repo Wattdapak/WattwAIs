@@ -4,9 +4,16 @@ class AppConfig {
   static const String _dartDefineBaseUrl =
       String.fromEnvironment('PREDICT_API_BASE_URL');
 
+  static const String _defaultProductionBaseUrl =
+      'https://YOUR-RENDER-SERVICE.onrender.com';
+
   static String get predictionApiBaseUrl {
     if (_dartDefineBaseUrl.isNotEmpty) {
       return _dartDefineBaseUrl;
+    }
+
+    if (kReleaseMode) {
+      return _defaultProductionBaseUrl;
     }
 
     if (kIsWeb) {
@@ -25,6 +32,5 @@ class AppConfig {
   static const Duration predictionApiTimeout = Duration(seconds: 15);
 
   // Example for production:
-  // flutter run --dart-define=PREDICT_API_BASE_URL=https://YOUR-RENDER-APP.onrender.com
+  // flutter run --dart-define=PREDICT_API_BASE_URL=https://YOUR-RENDER-SERVICE.onrender.com
 }
-
