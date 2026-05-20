@@ -8,6 +8,7 @@ class Routes {
   static const statscreen = '/statscreen';
   static const homescreen = '/homescreen';
   static const predictBill = '/predict-bill';
+  static const adjustscreen = '/adjustscreen';
   // static const billhistory = '/bill-history';
   // static const appliance = '/appliance';
   // static const analytics = '/analytics';

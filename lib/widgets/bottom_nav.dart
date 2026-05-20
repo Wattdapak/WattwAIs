@@ -79,13 +79,13 @@ class WattBottomNav extends StatelessWidget {
     (Icons.home_outlined, 'Home', Routes.dashboard),
     (Icons.bar_chart_rounded, 'Stats', Routes.statscreen),
     (Icons.lightbulb_outline_rounded, 'Tips', Routes.tipsscreen),
-    (Icons.person_outline_rounded, 'Me', Routes.profilescreen),
+    (Icons.tune_rounded, 'Adjust', Routes.adjustscreen),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 147,
+      height: 130,
       decoration: const BoxDecoration(
         color: AppColors.ink,
         border: Border(
