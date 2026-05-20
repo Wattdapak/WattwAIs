@@ -16,8 +16,8 @@ class _AdjustValuesScreenState extends State<AdjustValuesScreen> {
   final _rateController = TextEditingController();
 
   // Slider state for quick budget adjustments
-  double _budgetSliderValue = 150.0; 
-  final double _maxBudgetLimit = 500.0; // Adjust this ceiling as needed
+  double _budgetSliderValue = 100.0; 
+  final double _maxBudgetLimit = 20000.0; // Adjust this ceiling as needed
 
   @override
   void initState() {
@@ -198,7 +198,7 @@ class _AdjustValuesScreenState extends State<AdjustValuesScreen> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.bold),
                 decoration: InputDecoration(
-                  prefixText: '\$ ',
+                  prefixText: '\P ',
                   suffixText: '/ kWh',
                   suffixStyle: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w500),
                   prefixStyle: const TextStyle(color: AppColors.cyan, fontWeight: FontWeight.bold),
