@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import pandas as pd
@@ -7,6 +8,14 @@ import joblib
 from datetime import datetime
 
 app = FastAPI(title="wattwais prediction api")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 MODEL_PATH = "models/wattwais_iflex_xgboost.pkl"
 model = joblib.load(MODEL_PATH)

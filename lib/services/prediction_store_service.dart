@@ -2,26 +2,29 @@ import "package:cloud_firestore/cloud_firestore.dart";
 import "package:firebase_auth/firebase_auth.dart";
 
 import "package:wattwais/models/bill_model.dart";
+import "package:wattwais/models/prediction_result.dart";
 
-//for saving prediction results into Firestore.
-class PredictionService {
+// For saving prediction results into Firestore.
+class PredictionStoreService {
   static final _firestore = FirebaseFirestore.instance;
   static final _auth = FirebaseAuth.instance;
 
-  //save prediction record to Firestore under the current user.
+  // Save prediction record to Firestore under the current user.
   //
   // Parameters:
   // - [predictionTarget]: "current_month" or "next_month"
   // - [budget]: the monthly budget entered by the user
   // - [bills]: list of BillModel objects representing the 6 months of bills
- 
-  // - Exception if the user is not authenticated
+  // - [predictionResult]: optional API result to store alongside inputs
+  //
+  // Throws exception if the user is not authenticated.
   static Future<void> savePrediction({
     required String predictionTarget,
     required double budget,
     required List<BillModel> bills,
     required double baseRate,
     required List appliances,
+    PredictionResult? predictionResult,
   }) async {
     final user = _auth.currentUser;
 
@@ -49,9 +52,9 @@ class PredictionService {
           }
         }
       }).toList(),
-      
-      // 'appliances': appliances.map((appliance) => appliance.toJson()).toList(),
+      if (predictionResult != null) 'prediction_result': predictionResult.toJson(),
       'created_at': FieldValue.serverTimestamp(),
     });
   }
 }
+

@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import '../models/appliance_model.dart';
 import '../models/bill_entry.dart';
 import '../models/appliance_template.dart';
+import '../models/appliance_input.dart';
+import '../models/prediction_result.dart';
 
 import '../services/appliance_service.dart';
 import '../services/bill_service.dart';
-import '../services/prediction_service.dart';
+import '../services/prediction_api_service.dart';
+import '../services/prediction_store_service.dart';
 
 import '../widgets/bill_card.dart';
 import '../widgets/bottom_nav.dart';
@@ -37,6 +40,9 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
   List<BillEntry> _bills = [];
 
   String _predictionTarget = 'current_month';
+
+  PredictionResult? _latestPrediction;
+  bool _isPredicting = false;
 
   @override
   void initState() {
@@ -291,33 +297,121 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
     );
   }
 
+  Future<void> _showPredictionDialog(PredictionResult result) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Prediction Result'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Estimated Bill: ₱ ${result.estimatedBill.toStringAsFixed(2)}'),
+                const SizedBox(height: 6),
+                Text(
+                  'Estimated Monthly kWh: ${result.estimatedMonthlyKwh.toStringAsFixed(2)}',
+                ),
+                const SizedBox(height: 6),
+                Text('Effective Rate: ₱ ${result.effectiveRate.toStringAsFixed(2)}/kWh'),
+                if (result.exceedsBudget != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    result.exceedsBudget!
+                        ? 'Status: Exceeds budget'
+                        : 'Status: Within budget',
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _predictBill() async {
     if (!_formKey.currentState!.validate()) return;
 
     try {
+      setState(() {
+        _isPredicting = true;
+      });
+
       final bills = await BillService.saveBills(_bills);
       final appliances = await ApplianceService.loadAppliances();
 
-      await BillService.saveBudget(double.parse(_budgetController.text));
-      await BillService.saveBaseRate(double.parse(_baseRateController.text));
+      final monthlyBudget = double.parse(_budgetController.text);
+      final baseRate = double.parse(_baseRateController.text);
 
-      await PredictionService.savePrediction(
+      await BillService.saveBudget(monthlyBudget);
+      await BillService.saveBaseRate(baseRate);
+
+      final missingKwh = bills.any((b) => b.kwhUsed == null);
+      if (missingKwh) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter kWh used for all 6 months to run prediction.'),
+          ),
+        );
+        return;
+      }
+
+      final sixMonthTotalBill =
+          bills.fold<double>(0.0, (sum, b) => sum + b.billAmount);
+      final sixMonthTotalKwh =
+          bills.fold<double>(0.0, (sum, b) => sum + (b.kwhUsed ?? 0.0));
+
+      final api = PredictionApiService();
+      final result = await api.predictBill(
+        appliances: appliances.map(ApplianceInput.fromModel).toList(),
+        baseRate: baseRate,
+        sixMonthTotalBill: sixMonthTotalBill,
+        sixMonthTotalKwh: sixMonthTotalKwh,
+        monthlyBudget: monthlyBudget,
+      );
+
+      _latestPrediction = result;
+
+      await PredictionStoreService.savePrediction(
         predictionTarget: _predictionTarget,
         appliances: appliances,
-        budget: double.parse(_budgetController.text),
-        baseRate: double.parse(_baseRateController.text),
+        budget: monthlyBudget,
+        baseRate: baseRate,
         bills: bills,
+        predictionResult: result,
       );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Prediction saved successfully'),
+          content: Text('Prediction computed and saved'),
         ),
       );
+
+      await _showPredictionDialog(result);
     } catch (e) {
       debugPrint('$e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Prediction failed: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPredicting = false;
+        });
+      }
     }
   }
 
@@ -413,8 +507,14 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: _predictBill,
-                child: const Text('Predict Bill'),
+                onPressed: _isPredicting ? null : _predictBill,
+                child: _isPredicting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Predict Bill'),
               ),
             ],
           ),
