@@ -344,11 +344,55 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
         _isPredicting = true;
       });
 
+      final monthlyBudget = double.tryParse(_budgetController.text.trim());
+      if (monthlyBudget == null || monthlyBudget < 0) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid budget amount.')),
+        );
+        return;
+      }
+
+      final baseRate = double.tryParse(_baseRateController.text.trim());
+      if (baseRate == null || baseRate < 0) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid base rate.')),
+        );
+        return;
+      }
+
+      for (final bill in _bills) {
+        final billAmount = double.tryParse(bill.billController.text.trim());
+        if (billAmount == null || billAmount < 0) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Please enter a valid bill amount for ${formatMonth(bill.monthId)}.',
+              ),
+            ),
+          );
+          return;
+        }
+
+        final kwhText = bill.kwhController.text.trim();
+        final kwh = double.tryParse(kwhText);
+        if (kwhText.isEmpty || kwh == null || kwh < 0) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Please enter kWh used for ${formatMonth(bill.monthId)}.',
+              ),
+            ),
+          );
+          return;
+        }
+      }
+
       final bills = await BillService.saveBills(_bills);
       final appliances = await ApplianceService.loadAppliances();
-
-      final monthlyBudget = double.parse(_budgetController.text);
-      final baseRate = double.parse(_baseRateController.text);
 
       await BillService.saveBudget(monthlyBudget);
       await BillService.saveBaseRate(baseRate);
@@ -386,7 +430,6 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
         budget: monthlyBudget,
         baseRate: baseRate,
         bills: bills,
-        predictionResult: result,
       );
 
       if (!mounted) return;
