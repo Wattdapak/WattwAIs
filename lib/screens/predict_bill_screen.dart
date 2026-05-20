@@ -413,16 +413,21 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
       final sixMonthTotalKwh =
           bills.fold<double>(0.0, (sum, b) => sum + (b.kwhUsed ?? 0.0));
 
-      final api = PredictionApiService();
-      final result = await api.predictBill(
-        appliances: appliances.map(ApplianceInput.fromModel).toList(),
-        baseRate: baseRate,
-        sixMonthTotalBill: sixMonthTotalBill,
-        sixMonthTotalKwh: sixMonthTotalKwh,
-        monthlyBudget: monthlyBudget,
-      );
+      PredictionResult? result;
+      try {
+        final api = PredictionApiService();
+        result = await api.predictBill(
+          appliances: appliances.map(ApplianceInput.fromModel).toList(),
+          baseRate: baseRate,
+          sixMonthTotalBill: sixMonthTotalBill,
+          sixMonthTotalKwh: sixMonthTotalKwh,
+          monthlyBudget: monthlyBudget,
+        );
 
-      _latestPrediction = result;
+        _latestPrediction = result;
+      } catch (e) {
+        debugPrint('Prediction API error: $e');
+      }
 
       await PredictionStoreService.savePrediction(
         predictionTarget: _predictionTarget,
@@ -430,17 +435,24 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
         budget: monthlyBudget,
         baseRate: baseRate,
         bills: bills,
+        predictionResult: result,
       );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Prediction computed and saved'),
+        SnackBar(
+          content: Text(
+            result == null
+                ? 'Inputs saved. Prediction failed.'
+                : 'Prediction computed and saved',
+          ),
         ),
       );
 
-      await _showPredictionDialog(result);
+      if (result != null) {
+        await _showPredictionDialog(result);
+      }
     } catch (e) {
       debugPrint('$e');
       if (!mounted) return;
