@@ -154,7 +154,9 @@ List<_TipDefinition> _buildAiTips(List? tips) {
   for (final entry in tips) {
     final map = entry is Map ? entry : null;
     if (map == null) continue;
-    final title = (map['title'] ?? '').toString().trim();
+    final title = _extractApplianceTitle(
+      (map['title'] ?? '').toString().trim(),
+    );
     final recommendation = (map['recommendation'] ?? '').toString().trim();
     final impact = (map['estimated_impact'] ?? '').toString().trim();
     if (title.isEmpty || recommendation.isEmpty) continue;
@@ -170,6 +172,15 @@ List<_TipDefinition> _buildAiTips(List? tips) {
   }
 
   return parsed;
+}
+
+String _extractApplianceTitle(String rawTitle) {
+  if (rawTitle.isEmpty) return rawTitle;
+  final colonIndex = rawTitle.indexOf(':');
+  final base = colonIndex >= 0 ? rawTitle.substring(0, colonIndex) : rawTitle;
+  final parenIndex = base.indexOf('(');
+  final cleaned = parenIndex >= 0 ? base.substring(0, parenIndex) : base;
+  return cleaned.trim();
 }
 
 class _TipDefinition {
@@ -261,7 +272,7 @@ List<_TipDefinition> _buildApplianceTips({
       tips.add(
         _TipDefinition(
           icon: Icons.ac_unit_rounded,
-          title: '$name: reduce cooling cost${usageHint()}',
+          title: name,
           body: exceedsBudget
               ? 'Raise the setpoint by 1–2°C and use a fan to stay comfortable. Clean filters help a lot.'
               : 'Keep doors/windows sealed and clean the filter monthly to maintain efficiency.',
@@ -274,7 +285,7 @@ List<_TipDefinition> _buildApplianceTips({
       tips.add(
         _TipDefinition(
           icon: Icons.kitchen,
-          title: '$name: keep it efficient${usageHint()}',
+          title: name,
           body:
               'Avoid frequent door opening, don’t overfill, and let hot food cool before storing. Good airflow helps it run efficiently.',
         ),
@@ -286,7 +297,7 @@ List<_TipDefinition> _buildApplianceTips({
       tips.add(
         _TipDefinition(
           icon: Icons.tv_rounded,
-          title: '$name: lower power use${usageHint()}',
+          title: name,
           body:
               'Reduce brightness/backlight, enable eco mode, and turn off completely instead of leaving it on standby.',
         ),
@@ -298,7 +309,7 @@ List<_TipDefinition> _buildApplianceTips({
       tips.add(
         _TipDefinition(
           icon: Icons.toys,
-          title: '$name: run smarter${usageHint()}',
+          title: name,
           body:
               'Clean the blades regularly and use the lowest comfortable speed. Pair with a slightly higher AC temperature to save more.',
         ),
@@ -310,7 +321,7 @@ List<_TipDefinition> _buildApplianceTips({
       tips.add(
         _TipDefinition(
           icon: Icons.rice_bowl_rounded,
-          title: '$name: avoid keep-warm waste${usageHint()}',
+          title: name,
           body:
               'Use “keep warm” only when needed. Turning it off after meals can reduce unnecessary draw.',
         ),
@@ -322,7 +333,7 @@ List<_TipDefinition> _buildApplianceTips({
       tips.add(
         _TipDefinition(
           icon: Icons.local_cafe_rounded,
-          title: '$name: boil only what you need${usageHint()}',
+          title: name,
           body:
               'Boiling extra water wastes energy. Fill just enough for your cup(s), and descale occasionally for better performance.',
         ),
@@ -334,7 +345,7 @@ List<_TipDefinition> _buildApplianceTips({
       tips.add(
         _TipDefinition(
           icon: Icons.water_drop_outlined,
-          title: '$name: set a humidity target${usageHint()}',
+          title: name,
           body:
               'Aim for ~50–60% humidity, keep doors/windows closed, and clean filters to keep it efficient.',
         ),
@@ -346,7 +357,7 @@ List<_TipDefinition> _buildApplianceTips({
       tips.add(
         _TipDefinition(
           icon: Icons.power_rounded,
-          title: '$name: cut standby draw${usageHint()}',
+          title: name,
           body:
               'Unplug chargers when not in use. Reduce screen brightness and enable power saver to lower consumption.',
         ),
@@ -357,7 +368,7 @@ List<_TipDefinition> _buildApplianceTips({
     tips.add(
       _TipDefinition(
         icon: Icons.lightbulb_outline_rounded,
-        title: '$name: quick savings${usageHint()}',
+        title: name,
         body: exceedsBudget
             ? 'Try reducing usage time where possible and avoid standby power when not needed.'
             : 'Use only when needed and turn it off fully to avoid standby power draw.',
