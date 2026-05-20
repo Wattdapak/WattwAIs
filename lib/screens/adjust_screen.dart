@@ -152,7 +152,7 @@ class _AdjustValuesScreenState extends State<AdjustValuesScreen> {
                 style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.bold),
                 onChanged: _onBudgetTextChanged,
                 decoration: InputDecoration(
-                  prefixText: '\$ ',
+                  prefixText: '\P ',
                   prefixStyle: const TextStyle(color: AppColors.cyan, fontWeight: FontWeight.bold),
                   hintText: 'Enter maximum budget',
                   hintStyle: const TextStyle(color: AppColors.muted),
