@@ -4,7 +4,7 @@ import "package:firebase_auth/firebase_auth.dart";
 import "package:wattwais/models/bill_model.dart";
 import "package:wattwais/models/prediction_result.dart";
 
-// For saving prediction results into Firestore.
+//for saving prediction results into Firestore.
 class PredictionStoreService {
   static final _firestore = FirebaseFirestore.instance;
   static final _auth = FirebaseAuth.instance;

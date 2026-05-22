@@ -273,9 +273,7 @@ List<_TipDefinition> _buildApplianceTips({
         _TipDefinition(
           icon: Icons.ac_unit_rounded,
           title: name,
-          body: exceedsBudget
-              ? 'Raise the setpoint by 1–2°C and use a fan to stay comfortable. Clean filters help a lot.'
-              : 'Keep doors/windows sealed and clean the filter monthly to maintain efficiency.',
+          body: '${exceedsBudget ? 'Raise the setpoint by 1–2°C and use a fan to stay comfortable. Clean filters help a lot.' : 'Keep doors/windows sealed and clean the filter monthly to maintain efficiency.'}${usageHint()}',
         ),
       );
       continue;
@@ -286,8 +284,7 @@ List<_TipDefinition> _buildApplianceTips({
         _TipDefinition(
           icon: Icons.kitchen,
           title: name,
-          body:
-              'Avoid frequent door opening, don’t overfill, and let hot food cool before storing. Good airflow helps it run efficiently.',
+          body: 'Avoid frequent door opening, don\'t overfill, and let hot food cool before storing. Good airflow helps it run efficiently.${usageHint()}',
         ),
       );
       continue;
@@ -298,8 +295,7 @@ List<_TipDefinition> _buildApplianceTips({
         _TipDefinition(
           icon: Icons.tv_rounded,
           title: name,
-          body:
-              'Reduce brightness/backlight, enable eco mode, and turn off completely instead of leaving it on standby.',
+          body: 'Reduce brightness/backlight, enable eco mode, and turn off completely instead of leaving it on standby.${usageHint()}',
         ),
       );
       continue;
@@ -310,8 +306,7 @@ List<_TipDefinition> _buildApplianceTips({
         _TipDefinition(
           icon: Icons.toys,
           title: name,
-          body:
-              'Clean the blades regularly and use the lowest comfortable speed. Pair with a slightly higher AC temperature to save more.',
+          body: 'Clean the blades regularly and use the lowest comfortable speed. Pair with a slightly higher AC temperature to save more.${usageHint()}',
         ),
       );
       continue;
@@ -322,8 +317,7 @@ List<_TipDefinition> _buildApplianceTips({
         _TipDefinition(
           icon: Icons.rice_bowl_rounded,
           title: name,
-          body:
-              'Use “keep warm” only when needed. Turning it off after meals can reduce unnecessary draw.',
+          body: 'Use "keep warm" only when needed. Turning it off after meals can reduce unnecessary draw.${usageHint()}',
         ),
       );
       continue;
@@ -334,8 +328,7 @@ List<_TipDefinition> _buildApplianceTips({
         _TipDefinition(
           icon: Icons.local_cafe_rounded,
           title: name,
-          body:
-              'Boiling extra water wastes energy. Fill just enough for your cup(s), and descale occasionally for better performance.',
+          body: 'Boiling extra water wastes energy. Fill just enough for your cup(s), and descale occasionally for better performance.${usageHint()}',
         ),
       );
       continue;
@@ -346,8 +339,7 @@ List<_TipDefinition> _buildApplianceTips({
         _TipDefinition(
           icon: Icons.water_drop_outlined,
           title: name,
-          body:
-              'Aim for ~50–60% humidity, keep doors/windows closed, and clean filters to keep it efficient.',
+          body: 'Aim for ~50–60% humidity, keep doors/windows closed, and clean filters to keep it efficient.${usageHint()}',
         ),
       );
       continue;
@@ -358,8 +350,7 @@ List<_TipDefinition> _buildApplianceTips({
         _TipDefinition(
           icon: Icons.power_rounded,
           title: name,
-          body:
-              'Unplug chargers when not in use. Reduce screen brightness and enable power saver to lower consumption.',
+          body: 'Unplug chargers when not in use. Reduce screen brightness and enable power saver to lower consumption.${usageHint()}',
         ),
       );
       continue;
@@ -369,9 +360,7 @@ List<_TipDefinition> _buildApplianceTips({
       _TipDefinition(
         icon: Icons.lightbulb_outline_rounded,
         title: name,
-        body: exceedsBudget
-            ? 'Try reducing usage time where possible and avoid standby power when not needed.'
-            : 'Use only when needed and turn it off fully to avoid standby power draw.',
+        body: '${exceedsBudget ? 'Try reducing usage time where possible and avoid standby power when not needed.' : 'Use only when needed and turn it off fully to avoid standby power draw.'}${usageHint()}',
       ),
     );
   }

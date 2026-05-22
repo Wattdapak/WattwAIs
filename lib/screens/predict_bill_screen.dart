@@ -4,23 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wattwais/core/routes/screen_routes.dart';
 
-import '../models/appliance_model.dart';
-import '../models/bill_entry.dart';
-import '../models/appliance_template.dart';
-import '../models/appliance_input.dart';
-import '../models/prediction_result.dart';
-
-import '../services/appliance_service.dart';
-import '../services/bill_service.dart';
-import '../services/prediction_api_service.dart';
-import '../services/prediction_store_service.dart';
-
-import '../widgets/bill_card.dart';
-import '../widgets/bottom_nav.dart';
-import '../utils/bill_utils.dart';
-import '../data/appliance_templates.dart';
-
-import 'appliance_section.dart';
+import 'package:wattwais/models/models.dart';
+import 'package:wattwais/services/services.dart';
+import 'package:wattwais/widgets/widgets.dart';
+import 'package:wattwais/utils/bill_utils.dart';
+import 'package:wattwais/utils/bill_validator.dart';
 
 class PredictBillScreen extends StatefulWidget {
   const PredictBillScreen({super.key});
@@ -36,11 +24,8 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
   final _budgetController = TextEditingController();
   final _baseRateController = TextEditingController();
 
-  Timer? _budgetSaveDebounce;
-  Timer? _baseRateSaveDebounce;
-  bool _budgetDirty = false;
-  bool _baseRateDirty = false;
-  bool _suspendSettingsListeners = false;
+  final _worflowService = PredictBillWorkflowService();
+  final _settingsService = SettingsPersistenceService();
 
   final _newApplianceNameController = TextEditingController();
   final _newApplianceWattsController = TextEditingController();
@@ -59,41 +44,14 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
   @override
   void initState() {
     super.initState();
-    _budgetController.addListener(_onBudgetChanged);
-    _baseRateController.addListener(_onBaseRateChanged);
+    _budgetController.addListener(() {
+      _settingsService.onBudgetChanged(_budgetController);
+    });
+
+    _baseRateController.addListener(() {
+      _settingsService.onBaseRateChanged(_baseRateController);
+    });
     _initialize();
-  }
-
-  void _onBudgetChanged() {
-    if (_suspendSettingsListeners) return;
-    _budgetDirty = true;
-
-    _budgetSaveDebounce?.cancel();
-    final parsed = double.tryParse(
-      _budgetController.text.replaceAll(',', '').trim(),
-    );
-    if (parsed == null) return;
-
-    _budgetSaveDebounce = Timer(
-      const Duration(milliseconds: 600),
-      () => BillService.saveBudget(parsed),
-    );
-  }
-
-  void _onBaseRateChanged() {
-    if (_suspendSettingsListeners) return;
-    _baseRateDirty = true;
-
-    _baseRateSaveDebounce?.cancel();
-    final parsed = double.tryParse(
-      _baseRateController.text.replaceAll(',', '').trim(),
-    );
-    if (parsed == null) return;
-
-    _baseRateSaveDebounce = Timer(
-      const Duration(milliseconds: 600),
-      () => BillService.saveBaseRate(parsed),
-    );
   }
 
   Future<void> _initialize() async {
@@ -108,148 +66,33 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
 
     final budget = await BillService.loadBudget();
     if (budget != null) {
-      if (!_budgetDirty) {
-        _suspendSettingsListeners = true;
-        _budgetController.text = budget;
-        _suspendSettingsListeners = false;
-      }
+      _settingsService.applyBudgetValue(value: budget, controller: _budgetController);
     }
 
     final baseRate = await BillService.loadBaseRate();
     if (baseRate != null) {
-      if (!_baseRateDirty) {
-        _suspendSettingsListeners = true;
-        _baseRateController.text = baseRate;
-        _suspendSettingsListeners = false;
-      }
+      _settingsService.applyBaseRateValue(value: baseRate, controller: _baseRateController);
     }
-
     if (!mounted) return;
     setState(() {});
   }
 
-  Future<void> _showAddApplianceDialog() async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        ApplianceTemplate? selectedTemplate;
-        return AlertDialog(
-          title: const Text('Add Appliance'),
-          content: Form(
-            key: _applianceFormKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  StatefulBuilder(
-                    builder: (context, setLocalState) {
-                      return DropdownButtonFormField<ApplianceTemplate?>(
-                        initialValue: selectedTemplate,
-                        decoration: const InputDecoration(
-                          labelText: 'Choose from list',
-                        ),
-                        items: [
-                          const DropdownMenuItem<ApplianceTemplate?>(
-                            value: null,
-                            child: Text('Custom'),
-                          ),
-                          ...applianceTemplates.map(
-                            (template) => DropdownMenuItem<ApplianceTemplate?>(
-                              value: template,
-                              child: Text(template.name),
-                            ),
-                          ),
-                        ],
-                        onChanged: (template) {
-                          setLocalState(() {
-                            selectedTemplate = template;
-                          });
-                          if (template == null) return;
-                          _newApplianceNameController.text = template.name;
-                          _newApplianceWattsController.text = template
-                              .defaultWatts
-                              .toString();
-                          _newApplianceQuantityController.text = template
-                              .defaultQuantity
-                              .toString();
-                          _newApplianceHoursController.text = template
-                              .defaultHoursPerDay
-                              .toString();
-                          _newApplianceDaysController.text = template
-                              .defaultDaysPerWeek
-                              .toString();
-                        },
-                      );
-                    },
-                  ),
-                  TextFormField(
-                    controller: _newApplianceNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Appliance Name',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Enter appliance name';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _newApplianceWattsController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Watts'),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _newApplianceQuantityController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Qty'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _newApplianceHoursController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Hrs/day',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _newApplianceDaysController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Days/week'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                await _addManualAppliance();
-                if (!dialogContext.mounted) return;
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+ Future<void> _showAddApplianceDialog() async {
+  await showDialog(
+    context: context,
+    builder: (_) {
+      return AddApplianceDialog(
+        formKey: _applianceFormKey,
+        nameController: _newApplianceNameController,
+        wattsController: _newApplianceWattsController,
+        quantityController: _newApplianceQuantityController,
+        hoursController: _newApplianceHoursController,
+        daysController: _newApplianceDaysController,
+        onSubmit: _addManualAppliance,
+      );
+    },
+  );
+}
 
   Future<void> _loadAppliances() async {
     final appliances = await ApplianceService.loadAppliances();
@@ -338,111 +181,46 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
         _isPredicting = true;
       });
 
-      final monthlyBudget = double.tryParse(_budgetController.text.trim());
-      if (monthlyBudget == null || monthlyBudget < 0) {
+      final validationError = PredictBillValidator.validate(
+        budgetText: _budgetController.text,
+        baseRateText: _baseRateController.text,
+        bills: _bills,
+        formatMonth: formatMonth,
+      );
+      
+      if (validationError != null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid budget amount.')),
+          SnackBar(content: Text(validationError)),
         );
         return;
       }
 
-      final baseRate = double.tryParse(_baseRateController.text.trim());
-      if (baseRate == null || baseRate < 0) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid base rate.')),
-        );
-        return;
-      }
-
-      for (final bill in _bills) {
-        final billAmount = double.tryParse(bill.billController.text.trim());
-        if (billAmount == null || billAmount < 0) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Please enter a valid bill amount for ${formatMonth(bill.monthId)}.',
-              ),
-            ),
-          );
-          return;
-        }
-
-        final kwhText = bill.kwhController.text.trim();
-        final kwh = double.tryParse(kwhText);
-        if (kwhText.isEmpty || kwh == null || kwh < 0) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Please enter kWh used for ${formatMonth(bill.monthId)}.',
-              ),
-            ),
-          );
-          return;
-        }
-      }
-
+      final monthlyBudget = double.parse(_budgetController.text.trim());
+      final baseRate = double.parse(_baseRateController.text.trim());
       final bills = await BillService.saveBills(_bills);
-      final appliances = _appliances;
-
-      await BillService.saveBudget(monthlyBudget);
-      await BillService.saveBaseRate(baseRate);
-
-      final missingKwh = bills.any((b) => b.kwhUsed == null);
-      if (missingKwh) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Please enter kWh used for all 6 months to run prediction.',
-            ),
-          ),
-        );
-        return;
-      }
-
-      final sixMonthTotalBill = bills.fold<double>(
-        0.0,
-        (sum, b) => sum + b.billAmount,
-      );
-      final sixMonthTotalKwh = bills.fold<double>(
-        0.0,
-        (sum, b) => sum + (b.kwhUsed ?? 0.0),
-      );
 
       PredictionResult? result;
       String? predictionErrorMessage;
       try {
-        final api = PredictionApiService();
-        result = await api.predictBill(
-          appliances: appliances.map(ApplianceInput.fromModel).toList(),
-          baseRate: baseRate,
-          sixMonthTotalBill: sixMonthTotalBill,
-          sixMonthTotalKwh: sixMonthTotalKwh,
+        result = await _worflowService.predict(
+          bills: bills,
+          appliances: _appliances,
           monthlyBudget: monthlyBudget,
+          baseRate: baseRate,
+          predictionTarget: _predictionTarget,
         );
         _showBackendWarning = false;
       } on TimeoutException {
         _showBackendWarning = true;
-        predictionErrorMessage =
-            'Prediction request timed out. Backend may be waking up, please try again in a few seconds.';
+        predictionErrorMessage = 'Prediction request timed out. Backend may be waking up, please try again in a few seconds.';
       } catch (e) {
-        debugPrint('Prediction API error: $e');
+        debugPrint(
+          'Prediction API error: $e',
+        );
         _showBackendWarning = true;
         predictionErrorMessage = 'Prediction failed. Please try again.';
       }
-
-      await PredictionStoreService.savePrediction(
-        predictionTarget: _predictionTarget,
-        appliances: appliances,
-        budget: monthlyBudget,
-        baseRate: baseRate,
-        bills: bills,
-        predictionResult: result,
-      );
 
       if (!mounted) return;
 
@@ -482,8 +260,7 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
 
   @override
   void dispose() {
-    _budgetSaveDebounce?.cancel();
-    _baseRateSaveDebounce?.cancel();
+    _settingsService.dispose();
     _budgetController.dispose();
     _baseRateController.dispose();
     _newApplianceNameController.dispose();
@@ -520,26 +297,9 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
-              const Text(
-                'Prediction Target',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              RadioGroup<String>(
-                groupValue: _predictionTarget,
+              PredictionTargetSection(
+                value: _predictionTarget,
                 onChanged: _onPredictionTargetChanged,
-                child: Column(
-                  children: [
-                    RadioListTile<String>(
-                      value: 'current_month',
-                      title: const Text('Current Month'),
-                    ),
-                    RadioListTile<String>(
-                      value: 'next_month',
-                      title: const Text('Next Month'),
-                    ),
-                  ],
-                ),
               ),
               const SizedBox(height: 24),
               for (final bill in _bills) ...[
@@ -577,40 +337,7 @@ class _PredictBillScreenState extends State<PredictBillScreen> {
                 onChanged: _updateAppliance,
               ),
               const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isPredicting ? null : _predictBill,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1792E8),
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: const Color(
-                      0xFF1792E8,
-                    ).withValues(alpha: 0.45),
-                    disabledForegroundColor: Colors.white.withValues(
-                      alpha: 0.8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  child: _isPredicting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Predict Bill'),
-                ),
-              ),
+              PredictBillButton(isLoading: _isPredicting, onPressed: _predictBill),
             ],
           ),
         ),

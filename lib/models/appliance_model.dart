@@ -1,5 +1,18 @@
 import 'package:flutter/material.dart';
 
+final Map<int, IconData> _iconByCodePoint = <int, IconData>{
+  Icons.ac_unit.codePoint: Icons.ac_unit,
+  Icons.kitchen.codePoint: Icons.kitchen,
+  Icons.toys.codePoint: Icons.toys,
+  Icons.tv.codePoint: Icons.tv,
+  Icons.phone_iphone_rounded.codePoint: Icons.phone_iphone_rounded,
+  Icons.laptop_mac_rounded.codePoint: Icons.laptop_mac_rounded,
+  Icons.rice_bowl_rounded.codePoint: Icons.rice_bowl_rounded,
+  Icons.local_cafe_rounded.codePoint: Icons.local_cafe_rounded,
+  Icons.water_drop_outlined.codePoint: Icons.water_drop_outlined,
+  Icons.devices.codePoint: Icons.devices,
+};
+
 class ApplianceModel {
   final String id;
   final String name;
@@ -42,13 +55,15 @@ class ApplianceModel {
 
   //from firestore
   factory ApplianceModel.fromMap(String id, Map<String, dynamic> map) {
+    final rawCodePoint = map['icon_codepoint'];
+    final parsedCodePoint = rawCodePoint is int
+        ? rawCodePoint
+        : int.tryParse(rawCodePoint?.toString() ?? '');
+
     return ApplianceModel(
       id: id,
       name: map['name'] ?? '',
-      icon: IconData(
-        map['icon_codepoint'] ?? Icons.devices.codePoint,
-        fontFamily: 'MaterialIcons',
-      ),
+      icon: _iconByCodePoint[parsedCodePoint] ?? Icons.devices,
       watts: (map['watts'] ?? 0) as int,
       quantity: (map['quantity'] ?? 1) as int,
       hoursPerDay: (map['hours_per_day'] ?? 1) as int,

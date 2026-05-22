@@ -1,7 +1,6 @@
 {
   "buildCommand": "flutter build web --release --no-tree-shake-icons",
   "outputDirectory": "build/web",
-  "framework": "flutter",
   "rewrites": [
     {
       "source": "/(.*)",

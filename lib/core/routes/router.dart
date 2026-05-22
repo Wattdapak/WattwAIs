@@ -3,7 +3,6 @@ import "package:wattwais/core/routes/screen_routes.dart";
 
 import "package:wattwais/screens/dashboard.dart";
 import "package:wattwais/screens/splash_screen.dart";
-// import "package:wattwais/screens/profilescreen.dart";
 import "package:wattwais/screens/tipsscreen.dart";
 import "package:wattwais/screens/statscreen.dart";
 import "package:wattwais/screens/predict_bill_screen.dart";
