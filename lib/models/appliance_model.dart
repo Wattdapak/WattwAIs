@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-const Map<int, IconData> _iconByCodePoint = <int, IconData>{
+final Map<int, IconData> _iconByCodePoint = <int, IconData>{
   Icons.ac_unit.codePoint: Icons.ac_unit,
   Icons.kitchen.codePoint: Icons.kitchen,
   Icons.toys.codePoint: Icons.toys,

@@ -42,27 +42,36 @@ class BillService {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    for (final bill in bills) {
-      if (bill.isDisposed) continue;
-      final doc = await _firestore
+    // Fetch all bills
+    final futures = bills.map((bill) {
+      if (bill.isDisposed) return Future.value(null);
+      return _firestore
           .collection('users')
           .doc(user.uid)
           .collection('bills')
           .doc(bill.monthId)
           .get();
+    }).toList();
 
-      if (doc.exists) {
-        final billModel = BillModel.fromMap(doc.data()!);
+    final results = await Future.wait(futures);
 
-        if (bill.isDisposed) continue;
-        try {
-          bill.billController.text = billModel.billAmount.toString();
-          if (billModel.kwhUsed != null) {
-            bill.kwhController.text = billModel.kwhUsed.toString();
-          }
-        } catch (_) {
-          // Ignore updates if controllers were disposed mid-flight.
+    // Update controllers with fetched data
+    for (int i = 0; i < bills.length; i++) {
+      final bill = bills[i];
+      final doc = results[i];
+
+      if (bill.isDisposed || doc == null || !doc.exists) continue;
+
+      final billModel = BillModel.fromMap(doc.data()!);
+
+      if (bill.isDisposed) continue;
+      try {
+        bill.billController.text = billModel.billAmount.toString();
+        if (billModel.kwhUsed != null) {
+          bill.kwhController.text = billModel.kwhUsed.toString();
         }
+      } catch (_) {
+        // Ignore updates if controllers were disposed mid-flight.
       }
     }
   }
@@ -75,10 +84,8 @@ class BillService {
       throw Exception('User not authenticated');
     }
 
-    final List<BillModel> savedBills = [];
-
-    for (final bill in bills) {
-      final billModel = BillModel(
+    final List<BillModel> billModels = bills.map((bill) {
+      return BillModel(
         month: bill.monthId,
         billAmount: double.parse(bill.billController.text),
         kwhUsed: bill.kwhController.text.isEmpty
@@ -86,21 +93,24 @@ class BillService {
             : double.parse(bill.kwhController.text),
         updatedAt: Timestamp.now(),
       );
+    }).toList();
 
-      savedBills.add(billModel);
+    //save all bills
+    await Future.wait(
+      billModels.map((billModel) {
+        return _firestore
+            .collection("users")
+            .doc(user.uid)
+            .collection("bills")
+            .doc(billModel.month)
+            .set(billModel.toMap());
+      }),
+    );
 
-      await _firestore
-          .collection("users")
-          .doc(user.uid)
-          .collection("bills")
-          .doc(bill.monthId)
-          .set(billModel.toMap());
-    }
-
-    return savedBills;
+    return billModels;
   }
 
-  //loads the user's budget from Firestore.
+  //load the user's budget from Firestore.
   static Future<String?> loadBudget() async {
     final user = _auth.currentUser;
     if (user == null) return null;
@@ -117,7 +127,7 @@ class BillService {
     return doc['amount'].toString();
   }
 
-  // save the user's budget to Firestore.
+  //save the user's budget to Firestore.
   static Future<void> saveBudget(double amount) async {
     final user = _auth.currentUser;
     if (user == null) return;
