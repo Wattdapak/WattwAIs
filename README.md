@@ -1,6 +1,46 @@
 # WattwAIs
 
-Flutter app + FastAPI backend for electricity usage/bill prediction.
+WattwAIs is a mobile application designed to help households predict electricity bills, monitor energy usage, and receive recommendations for reducing electricity consumption.
+
+##  Developers
+
+This project was developed by **Bretana, Buerom, Melchor, and Verde**  
+for **CMSC 156: Mobile Development Final Project**.
+
+## Features
+
+### Predict Bill Form
+- Enter appliance usage details  
+- Provide 6‑month bill history  
+- Set base rate and monthly budget  
+- Predict and save results  
+
+### Home Dashboard
+- View latest estimated bill and kWh  
+- Calculate daily average from prediction  
+- Highlight top appliance usage share  
+- Display AI insight with fallback  
+
+### Stats
+- Chart monthly kWh trend  
+- Show next billing estimate  
+- Explain trend using AI insight  
+- Use latest prediction data source  
+
+### Tips
+- Summarize latest prediction status  
+- Provide appliance‑based recommendations  
+- Use Gemini tips when available  
+- Fall back to rule‑based tips  
+
+## Tech Stack
+
+- **Flutter** – for UI, navigation, and local interaction  
+- **Firebase** – for authentication and storing user/prediction records  
+- **Dart** - programming language used together with Flutter
+- **FastAPI** – backend service for prediction and AI insights endpoints  
+- **XGBoost** – machine learning model for bill prediction and usage forecasting  
+- **Gemini AI** – contextual recommendations with fallback rule-based models  
 
 ## Backend (local)
 
